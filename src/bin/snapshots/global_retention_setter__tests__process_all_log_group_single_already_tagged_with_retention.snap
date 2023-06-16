@@ -1,0 +1,5 @@
+---
+source: src/bin/global_retention_setter.rs
+expression: result
+---
+{"alreadyHasRetention":0,"alreadyTaggedWithRetention":1,"message":"Success","totalGroups":1,"updated":0}

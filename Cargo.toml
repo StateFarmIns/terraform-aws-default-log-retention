@@ -1,0 +1,40 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[package]
+name = "terraform-aws-default-log-retention"
+authors = ["Clete Blackwell II <clete.blackwell.m9ox@statefarm.com>"]
+version = "1.0.0"
+edition = "2021"
+default-run = "terraform-aws-default-log-retention"
+
+[profile.release-lambda]
+inherits = "release"
+lto = true # https://doc.rust-lang.org/cargo/reference/profiles.html#lto Big difference in binary size with a similarly-large impact to compile time.
+codegen-units = 1 # This is pretty extreme; eliminates parallel compilation. Makes a difference in binary size.
+
+[dependencies]
+tokio = { version = "1.21", features = ["macros"] }
+log = "0.4"
+tracing-subscriber = { version = "0", features = ["env-filter"] }
+# NOTE: the following crate is not part of the SDK, but it is maintained by AWS.
+lambda_runtime = "0.8"
+serde_json = "1.0" 
+serde = "1.0"
+cached = "0.38"
+env_logger = "0.10"
+aws-sdk-cloudwatchlogs = "0.24"
+aws-sdk-cloudwatch = "0.24"
+aws-config = "0.54"
+aws-smithy-types = "0.54"
+aws-smithy-client = "0.54"
+tokio-stream = "0.1"
+async-trait = "0.1"
+
+[dev-dependencies]
+aws-smithy-http = "0.54"
+futures = "0.3"
+http = "0.2"
+insta = { version = "1.21", features = ["filters"] }
+aws-smithy-client = { version = "0.54", features = ["test-util"] }
+mockall = "0.11"
+ctor = "0.1.26"

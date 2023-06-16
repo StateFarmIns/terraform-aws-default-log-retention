@@ -18,7 +18,8 @@ If `log_group_tags` is set, the module will also set a `retention`=`Set by AWS D
 
 ![diagram](./docs/Diagram.drawio.png)
 
-# Example
+# Example Usage
+## Single Region
 ```terraform
 locals {
  notification_list               = ["your.email@example.com"]
@@ -40,9 +41,35 @@ module "log_retention" {
     email_notification_list = local.notification_list
   }
 }
+```
 
-# Multi-region
-module "log_retention_west" {
+
+## Multi-region
+```
+# Define an aws provider for your primary region, and an aliased "secondary" provider for the secondary region
+
+locals {
+ notification_list               = ["your.email@example.com"]
+ global_log_retention_run_period = 60 * 12 # Twice a day
+ log_retention_in_days           = 30 # See tf-inputs.tf for allowed values
+ log_retention_name              = "default-log-retention"
+}
+
+module "log_retention" {
+  source = "git::https://github.com/StateFarmIns/terraform-aws-default-log-retention.git"
+
+  name = local.log_retention_name
+
+  log_level                       = "info"
+  log_retention_in_days           = local.log_retention_in_days
+  global_log_retention_run_period = local.global_log_retention_run_period
+
+  alarm_configuration = {
+    email_notification_list = local.notification_list
+  }
+}
+
+module "log_retention_secondary" {
   source = "git::https://github.com/StateFarmIns/terraform-aws-default-log-retention.git"
 
   providers = {
@@ -59,7 +86,7 @@ module "log_retention_west" {
     email_notification_list = local.notification_list
   }
   
-  iam_role_suffix = "-west" # Required to prevent IAM role names from conflicting
+  iam_role_suffix = "-secondary" # Required to prevent IAM role names from conflicting
 }
 ```
 

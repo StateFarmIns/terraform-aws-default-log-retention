@@ -1,0 +1,8 @@
+---
+source: src/main.rs
+expression: result
+---
+Error {
+    message: "Error deserializing input payload. Payload: `{\"invalid\":\"input\"}`. Context: `Some(Context { request_id: \"1231231233123123123\", deadline: 0, invoked_function_arn: \"arn:aws:whatever:my-awesome-stuff\", xray_trace_id: None, client_context: None, identity: None, env_config: Config { function_name: \"\", memory: 0, version: \"\", log_stream: \"\", log_group: \"\" } })`. Error: `missing field `detail``.",
+    severity: Warning,
+}

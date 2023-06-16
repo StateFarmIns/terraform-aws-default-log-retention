@@ -1,0 +1,8 @@
+---
+source: src/main.rs
+expression: error
+---
+Error {
+    message: "request has timed out",
+    severity: Error,
+}

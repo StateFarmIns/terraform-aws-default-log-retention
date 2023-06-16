@@ -1,0 +1,7 @@
+---
+source: src/main.rs
+expression: result
+---
+Object {
+    "message": String("Retention set successfully"),
+}

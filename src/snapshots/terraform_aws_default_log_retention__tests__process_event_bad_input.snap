@@ -1,0 +1,8 @@
+---
+source: src/main.rs
+expression: result
+---
+Object {
+    "message": String("Error deserializing input payload. Payload: `{\"invalid\":\"input\"}`. Context: `Some(Context { request_id: \"\", deadline: 0, invoked_function_arn: \"\", xray_trace_id: None, client_context: None, identity: None, env_config: Config { function_name: \"\", memory: 0, version: \"\", log_stream: \"\", log_group: \"\" } })`. Error: `missing field `detail``."),
+    "severity": String("Warning"),
+}

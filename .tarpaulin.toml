@@ -1,0 +1,6 @@
+[coverage]
+exclude-files = ["src/cloudwatch_logs_traits.rs", "src/cloudwatch_metrics_traits.rs", "src/error.rs"]
+
+[report]
+out = ["Html", "Xml", "Stdout"]
+output-dir = "reports"

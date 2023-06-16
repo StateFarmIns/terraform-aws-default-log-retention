@@ -1,0 +1,21 @@
+---
+source: src/main.rs
+expression: metrics
+---
+[
+    MetricDatum {
+        metric_name: Some(
+            "Updated",
+        ),
+        dimensions: None,
+        timestamp: None,
+        value: Some(
+            1.0,
+        ),
+        statistic_values: None,
+        values: None,
+        counts: None,
+        unit: None,
+        storage_resolution: None,
+    },
+]

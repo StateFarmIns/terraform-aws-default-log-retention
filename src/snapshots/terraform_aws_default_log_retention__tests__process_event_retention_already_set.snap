@@ -1,0 +1,7 @@
+---
+source: src/main.rs
+expression: result
+---
+Object {
+    "message": String("Not setting retention for MyLogGroupWasCreated because it is set to 30 days already."),
+}

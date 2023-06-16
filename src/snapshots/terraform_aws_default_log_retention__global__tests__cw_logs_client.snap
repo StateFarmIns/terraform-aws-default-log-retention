@@ -1,0 +1,40 @@
+---
+source: src/global.rs
+expression: client
+---
+CloudWatchLogs {
+    client: Client {
+        handle: Handle {
+            client: Client {
+                connector: DynConnector,
+                middleware: DynMiddleware,
+                retry_policy: Standard {
+                    config: Config {
+                        initial_retry_tokens: 500,
+                        retry_cost: 5,
+                        no_retry_increment: 1,
+                        timeout_retry_cost: 10,
+                        max_attempts: 10,
+                        initial_backoff: 500ms,
+                        max_backoff: 20s,
+                        },
+                    shared_state: CrossRequestRetryState {
+                        quota_available: Mutex {
+                            data: 500,
+                            poisoned: false,
+                            ..
+                        },
+                    },
+                },
+                operation_timeout_config: OperationTimeoutConfig {
+                    operation_timeout: None,
+                    operation_attempt_timeout: None,
+                },
+                sleep_impl: Some(
+                    TokioSleep,
+                ),
+            },
+            conf: Config,
+        },
+    },
+}
