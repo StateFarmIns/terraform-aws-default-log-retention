@@ -7,7 +7,7 @@ resource "aws_sns_topic" "alarms" {
   count = local.create_sns_topic ? 1 : 0
   name  = var.name
 
-  kms_master_key_id = data.aws_kms_key.master.id
+  kms_master_key_id = var.kms_key_arn
   tags              = var.tags
 }
 

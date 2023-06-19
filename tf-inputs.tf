@@ -18,7 +18,7 @@ variable "https_egress_security_group_name" {
 variable "kms_key_arn" {
   type        = string
   default     = null
-  description = "Provide a KMS key to override usage of the default master KMS key."
+  description = "If using a KMS key, provide it."
 }
 
 variable "permissions_boundary_arn" {

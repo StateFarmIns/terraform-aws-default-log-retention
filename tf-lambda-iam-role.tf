@@ -42,7 +42,7 @@ data "aws_iam_policy_document" "log_retention" {
 
   statement {
     actions   = ["kms:GenerateDataKey"]
-    resources = [local.kms_key_arn]
+    resources = [var.kms_key_arn]
   }
 
   statement {
