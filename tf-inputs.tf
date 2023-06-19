@@ -47,12 +47,6 @@ variable "log_level" {
   description = "Override Lambda log level (trace/debug/info/warn/error)"
 }
 
-variable "enable_datadog_log_subscription" {
-  type        = bool
-  default     = true
-  description = "Subscribes the logs from the Lambda to Datadog"
-}
-
 variable "log_retention_in_days" {
   type        = number
   default     = 90
