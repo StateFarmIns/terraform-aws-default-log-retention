@@ -3,15 +3,15 @@ variable "name" {
   description = "Base name for all resources. E.x. <short product name>."
 }
 
-variable "vpc_id" {
-  type        = string
-  description = "Pass in the ID of the VPC to override. Defaults to the first VPC found in the account."
+variable "subnet_ids" {
+  type        = list(string)
+  description = "If using a VPC, provide the IDs of the subnets you would like to deploy the Lambda to."
   default     = null
 }
 
-variable "https_egress_security_group_name" {
+variable "https_egress_security_group_id" {
   type        = string
-  description = "Pass in the name of a security group to override. Name of a security group which provides egress on port 443 to CloudWatch Logs."
+  description = "If using a VPC, pass the ID of a security group which provides egress on port 443 to CloudWatch Logs."
   default     = null
 }
 

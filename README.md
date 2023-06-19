@@ -113,8 +113,8 @@ No requirements.
 
 | Name | Version |
 |------|---------|
-| <a name="provider_archive"></a> [archive](#provider\_archive) | n/a |
-| <a name="provider_aws"></a> [aws](#provider\_aws) | n/a |
+| <a name="provider_archive"></a> [archive](#provider\_archive) | 2.4.0 |
+| <a name="provider_aws"></a> [aws](#provider\_aws) | 5.4.0 |
 
 ## Modules
 
@@ -130,8 +130,6 @@ No modules.
 | [aws_cloudwatch_event_target.log_group_creation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_event_target) | resource |
 | [aws_cloudwatch_log_group.global_log_retention_lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
 | [aws_cloudwatch_log_group.log_retention_lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_group) | resource |
-| [aws_cloudwatch_log_subscription_filter.global_log_retention_lambda_datadog](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_subscription_filter) | resource |
-| [aws_cloudwatch_log_subscription_filter.log_retention_lambda_datadog](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_log_subscription_filter) | resource |
 | [aws_cloudwatch_metric_alarm.alarm](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_iam_role.log_retention](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role) | resource |
 | [aws_lambda_function.global_log_retention](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function) | resource |
@@ -141,7 +139,6 @@ No modules.
 | [aws_lambda_invocation.run_on_existing_groups](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_invocation) | resource |
 | [aws_lambda_permission.global_log_retention](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
 | [aws_lambda_permission.log_retention](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_permission) | resource |
-| [aws_security_group.https_egress](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/security_group) | resource |
 | [aws_sns_topic.alarms](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic) | resource |
 | [aws_sns_topic_policy.alarms](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_policy) | resource |
 | [aws_sns_topic_subscription.alarms](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription) | resource |
@@ -153,12 +150,7 @@ No modules.
 | [aws_iam_policy_document.lambda_assume](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_policy_document.log_retention](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_policy_document) | data source |
 | [aws_iam_session_context.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/iam_session_context) | data source |
-| [aws_kms_key.master](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/kms_key) | data source |
-| [aws_lambda_function.datadog](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/lambda_function) | data source |
 | [aws_region.current](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/region) | data source |
-| [aws_security_groups.https_egress](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/security_groups) | data source |
-| [aws_subnets.subnets](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/subnets) | data source |
-| [aws_vpcs.vpcs](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/data-sources/vpcs) | data source |
 
 ## Inputs
 
@@ -166,7 +158,7 @@ No modules.
 |------|-------------|------|---------|:--------:|
 | <a name="input_alarm_configuration"></a> [alarm\_configuration](#input\_alarm\_configuration) | Provide either `sns_topic_arn` to an existing SNS topic, or a list of email users `email_notification_list` to subscribe for notifications. Alarm creation is REQUIRED for this module. Note that retention setting is retried automatically, so an alarm may mean that it failed the first time and succeeded the second time. Investigating logs for each failure is recommended. | `any` | n/a | yes |
 | <a name="input_global_log_retention_run_period"></a> [global\_log\_retention\_run\_period](#input\_global\_log\_retention\_run\_period) | Set to a number of minutes to invoke the global log retention Lambda on a schedule. Note that running it may cause perpetual diffs in other people's Terraform if they are creating a log group and not setting retention. | `number` | `360` | no |
-| <a name="input_https_egress_security_group_name"></a> [https\_egress\_security\_group\_name](#input\_https\_egress\_security\_group\_name) | Pass in the name of a security group to override. Name of a security group which provides egress on port 443 to CloudWatch Logs. | `string` | `null` | no |
+| <a name="input_https_egress_security_group_id"></a> [https\_egress\_security\_group\_id](#input\_https\_egress\_security\_group\_id) | If using a VPC, pass the ID of a security group which provides egress on port 443 to CloudWatch Logs. | `string` | `null` | no |
 | <a name="input_iam_role_suffix"></a> [iam\_role\_suffix](#input\_iam\_role\_suffix) | Due to Terraform limitations, this module always creates an IAM role. Pass in a suffix for the IAM role name so that it does not conflict between regions. | `string` | `""` | no |
 | <a name="input_kms_key_arn"></a> [kms\_key\_arn](#input\_kms\_key\_arn) | If using a KMS key, provide it. | `string` | `null` | no |
 | <a name="input_log_group_tags"></a> [log\_group\_tags](#input\_log\_group\_tags) | Set of tags to put on all log groups when retention is set. If not set, no tags will be added. If set, a `retention` tag will automatically be added to this list. | `map(string)` | `null` | no |
@@ -176,8 +168,8 @@ No modules.
 | <a name="input_name"></a> [name](#input\_name) | Base name for all resources. E.x. <short product name>. | `string` | n/a | yes |
 | <a name="input_permissions_boundary_arn"></a> [permissions\_boundary\_arn](#input\_permissions\_boundary\_arn) | Provide a permissions boundary ARN if you are bound by one. | `string` | `null` | no |
 | <a name="input_set_on_all_existing_groups"></a> [set\_on\_all\_existing\_groups](#input\_set\_on\_all\_existing\_groups) | Set to false to disable running a bit of code which will set retention on all existing groups. | `bool` | `true` | no |
+| <a name="input_subnet_ids"></a> [subnet\_ids](#input\_subnet\_ids) | If using a VPC, provide the IDs of the subnets you would like to deploy the Lambda to. | `list(string)` | `null` | no |
 | <a name="input_tags"></a> [tags](#input\_tags) | Adds tags to all created resources. It is highly recommended to use the AWS Provider's default tags instead of this variable. See: https://www.hashicorp.com/blog/default-tags-in-the-terraform-aws-provider. You can also use this input to add additional tags above and beyond the tags that are added by default\_tags. | `map(string)` | `null` | no |
-| <a name="input_vpc_id"></a> [vpc\_id](#input\_vpc\_id) | Pass in the ID of the VPC to override. Defaults to the first VPC found in the account. | `string` | `null` | no |
 
 ## Outputs
 

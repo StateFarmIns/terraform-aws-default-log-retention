@@ -28,9 +28,12 @@ resource "aws_lambda_function" "log_retention" {
     }
   }
 
-  vpc_config {
-    subnet_ids         = data.aws_subnets.subnets.ids
-    security_group_ids = [local.https_security_group_id]
+  dynamic "vpc_config" {
+    for_each = var.subnet_ids == null ? [] : ["make this block once"]
+    content {
+      subnet_ids         = var.subnet_ids
+      security_group_ids = [var.https_egress_security_group_id]
+    }
   }
 
   tags = var.tags
