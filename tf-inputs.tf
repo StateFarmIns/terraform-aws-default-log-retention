@@ -30,6 +30,7 @@ variable "permissions_boundary_arn" {
 variable "alarm_configuration" {
   type        = any
   description = "Provide either `sns_topic_arn` to an existing SNS topic, or a list of email users `email_notification_list` to subscribe for notifications. Passing null or omitting the argument turns off alarms. Note that retention setting is retried automatically, so an alarm may mean that it failed the first time and succeeded the second time. Investigating logs for each failure is recommended."
+  default     = null
 
   validation {
     condition = (
