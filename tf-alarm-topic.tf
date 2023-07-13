@@ -1,7 +1,7 @@
 locals {
-  enable_alarms = var.alarm_configuration != null
+  enable_alarms    = var.alarm_configuration != null
   create_sns_topic = local.enable_alarms && can([var.alarm_configuration.email_notification_list])
-  sns_topic_arn    = local.create_sns_topic ? aws_sns_topic.alarms[0].arn : var.alarm_configuration.sns_topic_arn
+  sns_topic_arn    = local.enable_alarms ? local.create_sns_topic ? aws_sns_topic.alarms[0].arn : var.alarm_configuration.sns_topic_arn : ""
 }
 
 resource "aws_sns_topic" "alarms" {
