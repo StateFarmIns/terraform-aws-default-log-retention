@@ -36,7 +36,7 @@ locals {
 }
 
 resource "aws_cloudwatch_metric_alarm" "alarm" {
-  for_each            = local.enable_alarms ? local.alarms : []
+  for_each            = local.enable_alarms ? local.alarms : {}
   alarm_name          = "${var.name}-${each.key}"
   alarm_description   = each.value.description
   comparison_operator = each.value.comparison_operator
