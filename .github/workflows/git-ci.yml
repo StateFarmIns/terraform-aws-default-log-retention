@@ -1,0 +1,36 @@
+name: Pull Request Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+      
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: prepare
+        uses: {% data reusables.actions.action-upload-artifact %}
+        with:
+          name: global_retention_setter
+          path: dist/global_retention_setter/bootstrap
+          name: log_retention_setter
+          path: dist/log_retention_setter/bootstrap
+        run: ./scripts/build-release.sh # Builds for ARM Lambda
+  test:
+    runs-on: ubuntu-latest
+    steps: 
+      - name: Run cargo check 
+        uses: actions-rs/cargo@v1
+        with:
+            command: check
+            components: rustfmt, clippy, lambda, insta
+      - name: prepare
+        run: cargo test -- --test-threads=1
+        # with:
+        #   name:
+  audit: 
+    runs-on: ubuntu-latest
+    steps: 
+      - name: prepare
+        run: cargo audit -D warnings
