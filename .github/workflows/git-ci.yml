@@ -10,12 +10,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: prepare log retention setter
-        uses: reusables.actions.action-upload-artifact
+        uses: actions/upload-artifact@v3
         with: 
           name: log_retention_setter
           path: dist/log_retention_setter/bootstrap
       - name: prepare global retention setter
-        uses: reusables.actions.action-upload-artifact
+        uses: actions/upload-artifact@v3
         with:
           name: global_retention_setter
           path: dist/global_retention_setter/bootstrap
@@ -34,6 +34,6 @@ jobs:
         #   name:
   audit: 
     runs-on: ubuntu-latest
-    steps: 
+    steps:
       - name: prepare
         run: cargo audit -D warnings

@@ -20,12 +20,12 @@ jobs:
         with:
           node-version: 18
       - name: prepare log retention setter
-        uses: reusables.actions.action-upload-artifact
+        uses: actions/upload-artifact@v3
         with: 
           name: log_retention_setter
           path: dist/log_retention_setter/bootstrap
       - name: prepare global retention setter
-        uses: reusables.actions.action-upload-artifact
+        uses: actions/upload-artifact@v3
         with:
           name: global_retention_setter
           path: dist/global_retention_setter/bootstrap
