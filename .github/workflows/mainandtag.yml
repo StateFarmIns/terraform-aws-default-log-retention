@@ -19,14 +19,17 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-      - name: prepare
-        uses: {% data reusables.actions.action-upload-artifact %}
+      - name: prepare log retention setter
+        uses: reusables.actions.action-upload-artifact
+        with: 
+          name: log_retention_setter
+          path: dist/log_retention_setter/bootstrap
+      - name: prepare global retention setter
+        uses: reusables.actions.action-upload-artifact
         with:
           name: global_retention_setter
           path: dist/global_retention_setter/bootstrap
-          name: log_retention_setter
-          path: dist/log_retention_setter/bootstrap
-        run: ./scripts/build-release.sh # Builds for ARM Lambda
+          run: ./scripts/build-release.sh # Builds for ARM Lambda
   test:
     runs-on: ubuntu-latest
     steps: 
