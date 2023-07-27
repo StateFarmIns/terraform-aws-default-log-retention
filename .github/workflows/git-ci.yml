@@ -9,17 +9,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: prepare log retention setter
-        uses: actions/upload-artifact@v3
-        with: 
-          name: log_retention_setter
-          path: dist/log_retention_setter/bootstrap
-      - name: prepare global retention setter
-        uses: actions/upload-artifact@v3
+      - uses: actions/checkout@v2
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
         with:
-          name: global_retention_setter
-          path: dist/global_retention_setter/bootstrap
-          run: ./scripts/build-release.sh # Builds for ARM Lambda
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - name: Install cargo commands
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-lambda cargo-insta
+      - name: Build
+        run: ./scripts/build-release.sh # Builds for ARM Lambda
   test:
     runs-on: ubuntu-latest
     steps: 
