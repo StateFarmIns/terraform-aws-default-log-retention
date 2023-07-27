@@ -29,7 +29,12 @@ jobs:
         with:
           toolchain: stable
           override: true
-          components: rustfmt, clippy, cargo-lambda, cargo-insta
+          components: rustfmt, clippy
+      - name: Install cargo commands
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-lambda cargo-insta
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
