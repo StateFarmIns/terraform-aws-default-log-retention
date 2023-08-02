@@ -41,7 +41,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
             command: check
-            components: rustfmt, clippy, lambda, insta, cargo-zigbuild
+            components: rustfmt, clippy, lambda, insta
       - name: prepare
         run: cargo test -- --test-threads=1
   audit: 
