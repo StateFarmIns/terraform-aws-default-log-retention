@@ -13,7 +13,6 @@ jobs:
       issues: write
       pull-requests: write
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
@@ -37,11 +36,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
             command: check
-            components: rustfmt, clippy, lambda, insta
+            components: rustfmt, clippy, lambda, insta, cargo-zigbuild
       - name: prepare
         run: cargo test -- --test-threads=1
-        # with:  # Add once rest of workflow is fixed
-        # name:
   audit: 
     runs-on: ubuntu-latest
     steps: 
