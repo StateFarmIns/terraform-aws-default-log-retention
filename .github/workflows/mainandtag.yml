@@ -14,6 +14,11 @@ jobs:
       pull-requests: write
     runs-on: ubuntu-latest
     steps:
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+            command: check
+            components: cargo-zigbuild
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
