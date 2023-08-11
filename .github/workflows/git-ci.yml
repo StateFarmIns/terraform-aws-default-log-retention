@@ -56,3 +56,7 @@ jobs:
         with:
           command: audit
           args: -D warnings
+      - name: Release
+        run: |
+          yarn add @semantic-release/github --dev 
+          npx semantic-release
