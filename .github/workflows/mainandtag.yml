@@ -52,5 +52,5 @@ jobs:
       # Semantic Tag
       - name: Release
         run: |
-          npm install --save-dev semantic-release
+          npm install --save-dev semantic-release@21.0.7
           npx semantic-release
