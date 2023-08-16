@@ -52,5 +52,5 @@ jobs:
       # Semantic Tag
       - name: Release
         run: |
-          yarn add @semantic-release/github --dev 
-          npx install @semantic-release/git semantic-release && semantic-release
+          npm install --save-dev semantic-release
+          npx semantic-release
