@@ -15,8 +15,11 @@ branches:
   - master
   - main
 plugins:
-  - "@semantic-release-cargo/semantic-release-cargo"
-  - assets:
+  - "@semantic-release/commit-analyzer"
+  - - "@semantic-release/release-notes-generator"
+  - "@semantic-release/changelog"
+  - - "@semantic-release/git"
+    - assets:
       - CHANGELOG.md
       - dist/global_retention_setter/bootstrap
       - dist/log_retention_setter/bootstrap
