@@ -27,6 +27,7 @@ jobs:
         run: ./scripts/build-release.sh # Builds for ARM Lambda
       - name: Release
         run: |
+          npm i @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/git
           npx semantic-release
         
   test:
