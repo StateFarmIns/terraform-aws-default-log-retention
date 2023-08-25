@@ -2,11 +2,13 @@
 source: src/bin/global_retention_setter.rs
 expression: result
 ---
-TimeoutError(
-    TimeoutError {
-        source: Error {
-            message: "Some error happened",
-            severity: Error,
+ResourceAlreadyExistsException(
+    ResourceAlreadyExistsException {
+        message: None,
+        meta: ErrorMetadata {
+            code: None,
+            message: None,
+            extras: None,
         },
     },
 )

@@ -159,12 +159,14 @@ mod tests {
     use std::collections::HashMap;
 
     use async_trait::async_trait;
-    use aws_sdk_cloudwatch::{error::PutMetricDataError, model::MetricDatum, output::PutMetricDataOutput};
+    use aws_sdk_cloudwatch::{operation::put_metric_data::PutMetricDataOutput, types::MetricDatum, Error as CloudWatchError};
     use aws_sdk_cloudwatchlogs::{
-        error::{DescribeLogGroupsError, ListTagsForResourceError, PutRetentionPolicyError, TagResourceError},
-        model::LogGroup,
-        output::{DescribeLogGroupsOutput, ListTagsForResourceOutput, PutRetentionPolicyOutput, TagResourceOutput},
-        types::SdkError,
+        operation::{
+            describe_log_groups::DescribeLogGroupsOutput, list_tags_for_resource::ListTagsForResourceOutput, put_retention_policy::PutRetentionPolicyOutput,
+            tag_resource::TagResourceOutput,
+        },
+        types::{error::DataAlreadyAcceptedException, LogGroup},
+        Error as CloudWatchLogsError,
     };
     use lambda_runtime::{Context, LambdaEvent};
     use mockall::{mock, predicate};
@@ -190,9 +192,9 @@ mod tests {
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         mock_cloud_watch_logs_client
             .expect_describe_log_groups()
-            .with(predicate::eq("MyLogGroupWasCreated"))
+            .with(predicate::eq(Some("MyLogGroupWasCreated".to_string())), predicate::eq(None))
             .once()
-            .returning(|_| mock_describe_log_groups_response("MyLogGroupWasCreated", 0));
+            .returning(|_, _| mock_describe_log_groups_response("MyLogGroupWasCreated", 0));
 
         mock_cloud_watch_logs_client
             .expect_list_tags_for_resource()
@@ -237,9 +239,9 @@ mod tests {
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         mock_cloud_watch_logs_client
             .expect_describe_log_groups()
-            .with(predicate::eq("MyLogGroupWasCreated"))
+            .with(predicate::eq(Some("MyLogGroupWasCreated".to_string())), predicate::eq(None))
             .once()
-            .returning(|_| mock_describe_log_groups_response("MyLogGroupWasCreated", 0));
+            .returning(|_, _| mock_describe_log_groups_response("MyLogGroupWasCreated", 0));
 
         mock_cloud_watch_logs_client
             .expect_list_tags_for_resource()
@@ -252,11 +254,9 @@ mod tests {
             .with(predicate::eq("MyLogGroupWasCreated"), predicate::eq(30))
             .once()
             .returning(|_, _| {
-                // This type of error would never happen because it is "my" error type rather than an AWS error type. Luckily it doesn't matter -- we only care that an error happened.
-                Err(SdkError::timeout_error(Box::new(Error {
-                    message: "Some error happened".to_string(),
-                    severity: Severity::Error,
-                })))
+                Err(CloudWatchLogsError::DataAlreadyAcceptedException(
+                    DataAlreadyAcceptedException::builder().build(),
+                ))
             });
 
         let error = process_event(event, mock_cloud_watch_logs_client, MockCloudWatchMetrics::new())
@@ -275,9 +275,9 @@ mod tests {
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         mock_cloud_watch_logs_client
             .expect_describe_log_groups()
-            .with(predicate::eq("MyLogGroupWasCreated"))
+            .with(predicate::eq(Some("MyLogGroupWasCreated".to_string())), predicate::eq(None))
             .once()
-            .returning(|_| mock_describe_log_groups_response("MyLogGroupWasCreated", 0));
+            .returning(|_, _| mock_describe_log_groups_response("MyLogGroupWasCreated", 0));
 
         mock_cloud_watch_logs_client
             .expect_list_tags_for_resource()
@@ -297,10 +297,9 @@ mod tests {
             .once()
             .returning(|_, _| {
                 // This type of error would never happen because it is "my" error type rather than an AWS error type. Luckily it doesn't matter -- we only care that an error happened.
-                Err(SdkError::timeout_error(Box::new(Error {
-                    message: "Some error happened".to_string(),
-                    severity: Severity::Error,
-                })))
+                Err(CloudWatchLogsError::DataAlreadyAcceptedException(
+                    DataAlreadyAcceptedException::builder().build(),
+                ))
             });
 
         let mut mock_cloud_watch_metrics_client = MockCloudWatchMetrics::new();
@@ -328,9 +327,9 @@ mod tests {
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         mock_cloud_watch_logs_client
             .expect_describe_log_groups()
-            .with(predicate::eq("MyLogGroupWasCreated"))
+            .with(predicate::eq(Some("MyLogGroupWasCreated".to_string())), predicate::eq(None))
             .once()
-            .returning(|_| mock_describe_log_groups_response("MyLogGroupWasCreated", 30));
+            .returning(|_, _| mock_describe_log_groups_response("MyLogGroupWasCreated", 30));
 
         let mut mock_cloud_watch_metrics_client = MockCloudWatchMetrics::new();
         mock_cloud_watch_metrics_client
@@ -357,9 +356,9 @@ mod tests {
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         mock_cloud_watch_logs_client
             .expect_describe_log_groups()
-            .with(predicate::eq("MyLogGroupWasCreated"))
+            .with(predicate::eq(Some("MyLogGroupWasCreated".to_string())), predicate::eq(None))
             .once()
-            .returning(|_| mock_describe_log_groups_response("MyLogGroupWasCreated", 0));
+            .returning(|_, _| mock_describe_log_groups_response("MyLogGroupWasCreated", 0));
 
         mock_cloud_watch_logs_client
             .expect_list_tags_for_resource()
@@ -443,8 +442,9 @@ mod tests {
         impl DescribeLogGroups for CloudWatchLogs {
             async fn describe_log_groups(
                 &self,
-                log_group_name_prefix: &str,
-            ) -> Result<DescribeLogGroupsOutput, SdkError<DescribeLogGroupsError>>;
+                log_group_name_prefix: Option<String>,
+                next_token: Option<String>
+            ) -> Result<DescribeLogGroupsOutput, CloudWatchLogsError>;
         }
 
         #[async_trait]
@@ -452,7 +452,7 @@ mod tests {
             async fn list_tags_for_resource(
                 &self,
                 resource_arn: &str,
-            ) -> Result<ListTagsForResourceOutput, SdkError<ListTagsForResourceError>>;
+            ) -> Result<ListTagsForResourceOutput, CloudWatchLogsError>;
         }
 
         #[async_trait]
@@ -461,7 +461,7 @@ mod tests {
                 &self,
                 log_group_name: &str,
                 retention_in_days: i32,
-            ) -> Result<PutRetentionPolicyOutput, SdkError<PutRetentionPolicyError>>;
+            ) -> Result<PutRetentionPolicyOutput, CloudWatchLogsError>;
         }
 
         #[async_trait]
@@ -470,7 +470,7 @@ mod tests {
                 &self,
                 log_group_arn: &str,
                 tags: HashMap<String, String>
-            ) -> Result<TagResourceOutput, SdkError<TagResourceError>>;
+            ) -> Result<TagResourceOutput, CloudWatchLogsError>;
         }
     }
 
@@ -483,17 +483,17 @@ mod tests {
                 &self,
                 namespace: String,
                 metric_data: Vec<MetricDatum>,
-            ) -> Result<PutMetricDataOutput, SdkError<PutMetricDataError>>;
+            ) -> Result<PutMetricDataOutput, CloudWatchError>;
         }
     }
 
-    fn mock_describe_log_groups_response(log_group_name: &str, retention: i32) -> Result<DescribeLogGroupsOutput, SdkError<DescribeLogGroupsError>> {
+    fn mock_describe_log_groups_response(log_group_name: &str, retention: i32) -> Result<DescribeLogGroupsOutput, CloudWatchLogsError> {
         let log_group = LogGroup::builder().log_group_name(log_group_name).retention_in_days(retention).build();
         let response = DescribeLogGroupsOutput::builder().log_groups(log_group).build();
         Ok(response)
     }
 
-    fn mock_list_tags_for_resource_response(retention_tag_value: Option<&str>) -> Result<ListTagsForResourceOutput, SdkError<ListTagsForResourceError>> {
+    fn mock_list_tags_for_resource_response(retention_tag_value: Option<&str>) -> Result<ListTagsForResourceOutput, CloudWatchLogsError> {
         if let Some(retention_tag_value) = retention_tag_value {
             let mut tags: HashMap<String, String> = HashMap::new();
             tags.insert("retention".to_string(), retention_tag_value.to_string());

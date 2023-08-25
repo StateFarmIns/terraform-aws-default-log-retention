@@ -4,7 +4,7 @@ use crate::{
 };
 
 pub async fn get_existing_retention(log_group_name: &str, client: &impl DescribeLogGroups) -> Result<i32, Error> {
-    let describe_log_groups_response = client.describe_log_groups(log_group_name).await?;
+    let describe_log_groups_response = client.describe_log_groups(Some(log_group_name.to_string()), None).await?;
 
     let log_group = describe_log_groups_response
         .log_groups()
@@ -26,7 +26,7 @@ pub async fn get_existing_retention(log_group_name: &str, client: &impl Describe
 
 #[cfg(test)]
 mod tests {
-    use aws_sdk_cloudwatchlogs::{error::DescribeLogGroupsError, model::LogGroup, output::DescribeLogGroupsOutput, types::SdkError};
+    use aws_sdk_cloudwatchlogs::{operation::describe_log_groups::DescribeLogGroupsOutput, types::LogGroup, Error as CloudWatchLogsError};
     use mockall::predicate;
 
     use crate::{cloudwatch_logs_traits::MockDescribeLogGroups, error::Severity};
@@ -41,8 +41,8 @@ mod tests {
         let mut mock_describe_log_groups = MockDescribeLogGroups::new();
         mock_describe_log_groups
             .expect_describe_log_groups()
-            .with(predicate::eq(group))
-            .returning(move |_| mock_describe_log_groups_response(group, retention))
+            .with(predicate::eq(Some(group.to_string())), predicate::eq(None))
+            .returning(move |_, _| mock_describe_log_groups_response(group, retention))
             .once();
 
         assert_eq!(retention, get_existing_retention(group, &mock_describe_log_groups).await.unwrap());
@@ -50,8 +50,8 @@ mod tests {
         let retention = 30;
         mock_describe_log_groups
             .expect_describe_log_groups()
-            .with(predicate::eq(group))
-            .returning(move |_| mock_describe_log_groups_response(group, retention))
+            .with(predicate::eq(Some(group.to_string())), predicate::eq(None))
+            .returning(move |_, _| mock_describe_log_groups_response(group, retention))
             .once();
 
         assert_eq!(retention, get_existing_retention(group, &mock_describe_log_groups).await.unwrap());
@@ -64,8 +64,8 @@ mod tests {
         let mut mock_describe_log_groups = MockDescribeLogGroups::new();
         mock_describe_log_groups
             .expect_describe_log_groups()
-            .with(predicate::eq(group))
-            .returning(|_| Ok(DescribeLogGroupsOutput::builder().build()))
+            .with(predicate::eq(Some(group.to_string())), predicate::eq(None))
+            .returning(|_, _| Ok(DescribeLogGroupsOutput::builder().build()))
             .once();
 
         let err = get_existing_retention(group, &mock_describe_log_groups).await.unwrap_err();
@@ -81,8 +81,8 @@ mod tests {
         let mut mock_describe_log_groups = MockDescribeLogGroups::new();
         mock_describe_log_groups
             .expect_describe_log_groups()
-            .with(predicate::eq(group))
-            .returning(|_| mock_describe_log_groups_response("SomeRandomOtherLogGroupThatIDidNotAskFor", 0))
+            .with(predicate::eq(Some(group.to_string())), predicate::eq(None))
+            .returning(|_, _| mock_describe_log_groups_response("SomeRandomOtherLogGroupThatIDidNotAskFor", 0))
             .once();
 
         let err = get_existing_retention(group, &mock_describe_log_groups).await.unwrap_err();
@@ -91,7 +91,7 @@ mod tests {
         assert!(err.message.contains(group));
     }
 
-    fn mock_describe_log_groups_response(log_group_name: &str, retention: i32) -> Result<DescribeLogGroupsOutput, SdkError<DescribeLogGroupsError>> {
+    fn mock_describe_log_groups_response(log_group_name: &str, retention: i32) -> Result<DescribeLogGroupsOutput, CloudWatchLogsError> {
         let log_group = LogGroup::builder().log_group_name(log_group_name).retention_in_days(retention).build();
         let response = DescribeLogGroupsOutput::builder().log_groups(log_group).build();
         Ok(response)

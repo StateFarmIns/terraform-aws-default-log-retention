@@ -15,18 +15,16 @@ Adding a new operation:
 
 */
 
-use std::{collections::HashMap, pin::Pin};
-
 use async_trait::async_trait;
-use aws_sdk_cloudwatchlogs::{
-    error::{DescribeLogGroupsError, ListTagsForResourceError, PutRetentionPolicyError, TagResourceError},
-    output::{DescribeLogGroupsOutput, ListTagsForResourceOutput, PutRetentionPolicyOutput, TagResourceOutput},
-    types::SdkError,
-    Client as CloudWatchLogsClient,
+use aws_sdk_cloudwatchlogs::operation::{
+    describe_log_groups::DescribeLogGroupsOutput, list_tags_for_resource::ListTagsForResourceOutput, put_retention_policy::PutRetentionPolicyOutput,
+    tag_resource::TagResourceOutput,
 };
+use aws_sdk_cloudwatchlogs::{Client as CloudWatchLogsClient, Error as CloudWatchLogsError};
+use std::collections::HashMap;
+
 #[cfg(test)]
 use mockall::automock;
-use tokio_stream::Stream;
 
 /* Base Struct */
 
@@ -48,28 +46,27 @@ impl CloudWatchLogs {
 #[cfg_attr(test, automock)]
 #[async_trait]
 pub trait DescribeLogGroups {
-    async fn describe_log_groups(&self, log_group_name_prefix: &str) -> Result<DescribeLogGroupsOutput, SdkError<DescribeLogGroupsError>>;
-}
-
-#[async_trait]
-pub trait DescribeLogGroupsPaginated {
-    fn describe_log_groups_paginated(&self) -> Pin<Box<dyn Stream<Item = Result<DescribeLogGroupsOutput, SdkError<DescribeLogGroupsError>>>>>;
+    async fn describe_log_groups(
+        &self,
+        log_group_name_prefix: Option<String>,
+        next_token: Option<String>,
+    ) -> Result<DescribeLogGroupsOutput, CloudWatchLogsError>;
 }
 
 #[async_trait]
 pub trait ListTagsForResource {
-    async fn list_tags_for_resource(&self, resource_arn: &str) -> Result<ListTagsForResourceOutput, SdkError<ListTagsForResourceError>>;
+    async fn list_tags_for_resource(&self, resource_arn: &str) -> Result<ListTagsForResourceOutput, CloudWatchLogsError>;
 }
 
 #[async_trait]
 pub trait PutRetentionPolicy {
-    async fn put_retention_policy(&self, log_group_name: &str, retention_in_days: i32) -> Result<PutRetentionPolicyOutput, SdkError<PutRetentionPolicyError>>;
+    async fn put_retention_policy(&self, log_group_name: &str, retention_in_days: i32) -> Result<PutRetentionPolicyOutput, CloudWatchLogsError>;
 }
 
 #[async_trait]
 pub trait TagResource {
     // Add retention tag to a log group
-    async fn tag_resource(&self, log_group_arn: &str, tags: HashMap<String, String>) -> Result<TagResourceOutput, SdkError<TagResourceError>>;
+    async fn tag_resource(&self, log_group_arn: &str, tags: HashMap<String, String>) -> Result<TagResourceOutput, CloudWatchLogsError>;
 }
 
 /* End Traits */
@@ -78,28 +75,31 @@ pub trait TagResource {
 
 #[async_trait]
 impl DescribeLogGroups for CloudWatchLogs {
-    async fn describe_log_groups(&self, log_group_name_prefix: &str) -> Result<DescribeLogGroupsOutput, SdkError<DescribeLogGroupsError>> {
-        Ok(self.client.describe_log_groups().log_group_name_prefix(log_group_name_prefix).send().await?)
-    }
-}
-
-#[async_trait]
-impl DescribeLogGroupsPaginated for CloudWatchLogs {
-    fn describe_log_groups_paginated(&self) -> Pin<Box<dyn Stream<Item = Result<DescribeLogGroupsOutput, SdkError<DescribeLogGroupsError>>>>> {
-        Box::pin(self.client.describe_log_groups().into_paginator().send())
+    async fn describe_log_groups(
+        &self,
+        log_group_name_prefix: Option<String>,
+        next_token: Option<String>,
+    ) -> Result<DescribeLogGroupsOutput, CloudWatchLogsError> {
+        Ok(self
+            .client
+            .describe_log_groups()
+            .log_group_name_prefix(log_group_name_prefix.unwrap_or_default())
+            .next_token(next_token.unwrap_or_default())
+            .send()
+            .await?)
     }
 }
 
 #[async_trait]
 impl ListTagsForResource for CloudWatchLogs {
-    async fn list_tags_for_resource(&self, resource_arn: &str) -> Result<ListTagsForResourceOutput, SdkError<ListTagsForResourceError>> {
+    async fn list_tags_for_resource(&self, resource_arn: &str) -> Result<ListTagsForResourceOutput, CloudWatchLogsError> {
         Ok(self.client.list_tags_for_resource().resource_arn(resource_arn).send().await?)
     }
 }
 
 #[async_trait]
 impl PutRetentionPolicy for CloudWatchLogs {
-    async fn put_retention_policy(&self, log_group_name: &str, retention_in_days: i32) -> Result<PutRetentionPolicyOutput, SdkError<PutRetentionPolicyError>> {
+    async fn put_retention_policy(&self, log_group_name: &str, retention_in_days: i32) -> Result<PutRetentionPolicyOutput, CloudWatchLogsError> {
         Ok(self
             .client
             .put_retention_policy()
@@ -112,7 +112,7 @@ impl PutRetentionPolicy for CloudWatchLogs {
 
 #[async_trait]
 impl TagResource for CloudWatchLogs {
-    async fn tag_resource(&self, log_group_arn: &str, tags: HashMap<String, String>) -> Result<TagResourceOutput, SdkError<TagResourceError>> {
+    async fn tag_resource(&self, log_group_arn: &str, tags: HashMap<String, String>) -> Result<TagResourceOutput, CloudWatchLogsError> {
         Ok(self
             .client
             .tag_resource()
