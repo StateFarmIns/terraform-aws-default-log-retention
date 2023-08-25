@@ -1,0 +1,65 @@
+# This file needs all the commands from git-ci.yml, because this is the procedure for merging to main.
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v3
+      - uses: goto-bus-stop/setup-zig@v2
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - name: Install cargo commands
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-lambda cargo-insta
+      - name: Build
+        run: ./scripts/build-release.sh # Builds for ARM Lambda
+      - name: Release
+        run: |
+          npm i @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/git
+          npx semantic-release
+        
+  test:
+    runs-on: ubuntu-latest
+    steps: 
+      - uses: actions/checkout@v2
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+          components: rustfmt, clippy
+      - name: Install cargo commands
+        uses: actions-rs/cargo@v1
+        with:
+          command: install
+          args: cargo-lambda cargo-insta
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+            command: test
+            args: -- --test-threads=1
+
+  audit: 
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - uses: actions-rs/cargo@v1
+        with:
+          command: audit
+          args: -D warnings
