@@ -1712,13 +1712,10 @@ dependencies = [
  "aws-config",
  "aws-sdk-cloudwatch",
  "aws-sdk-cloudwatchlogs",
- "aws-smithy-http",
  "aws-smithy-types",
  "cached",
  "ctor",
  "env_logger",
- "futures",
- "http",
  "insta",
  "lambda_runtime",
  "log",
@@ -1726,7 +1723,6 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "tokio-stream",
  "tracing-subscriber",
 ]
 
