@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use aws_sdk_cloudwatch::{error::PutMetricDataError, model::MetricDatum, output::PutMetricDataOutput, types::SdkError, Client as CloudWatchMetricsClient};
+use aws_sdk_cloudwatch::{operation::put_metric_data::PutMetricDataOutput, types::MetricDatum, Client as CloudWatchMetricsClient, Error};
 
 #[cfg(test)]
 use mockall::automock;
@@ -24,7 +24,7 @@ impl CloudWatchMetrics {
 #[cfg_attr(test, automock)]
 #[async_trait]
 pub trait PutMetricData {
-    async fn put_metric_data(&self, namespace: String, metric_data: Vec<MetricDatum>) -> Result<PutMetricDataOutput, SdkError<PutMetricDataError>>;
+    async fn put_metric_data(&self, namespace: String, metric_data: Vec<MetricDatum>) -> Result<PutMetricDataOutput, Error>;
 }
 
 /* End Traits */
@@ -33,7 +33,7 @@ pub trait PutMetricData {
 
 #[async_trait]
 impl PutMetricData for CloudWatchMetrics {
-    async fn put_metric_data(&self, namespace: String, metric_data: Vec<MetricDatum>) -> Result<PutMetricDataOutput, SdkError<PutMetricDataError>> {
+    async fn put_metric_data(&self, namespace: String, metric_data: Vec<MetricDatum>) -> Result<PutMetricDataOutput, Error> {
         Ok(self
             .client
             .put_metric_data()

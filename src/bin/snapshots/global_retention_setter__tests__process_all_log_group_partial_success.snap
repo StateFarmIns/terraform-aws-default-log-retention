@@ -2,4 +2,4 @@
 source: src/bin/global_retention_setter.rs
 expression: result
 ---
-Error occurred. Message: Failed to update some log group retentions: [TimeoutError(TimeoutError { source: Error { message: "Some error happened", severity: Error } }), TimeoutError(TimeoutError { source: Error { message: "Some error happened when getting tags", severity: Error } })]. Severity: Error
+Error occurred. Message: Failed to update some log group retentions: [InvalidOperationException(InvalidOperationException { message: None, meta: ErrorMetadata { code: None, message: None, extras: None } }), DataAlreadyAcceptedException(DataAlreadyAcceptedException { expected_sequence_token: None, message: None, meta: ErrorMetadata { code: None, message: None, extras: None } })]. Severity: Error
