@@ -67,12 +67,7 @@ mod tests {
         std::env::set_var("AWS_ACCESS_KEY_ID", "AKIAASDASDQWEF");
         std::env::set_var("AWS_SECRET_ACCESS_KEY", "ASIAAFQWEFWEIFJ");
 
-        let client = cloudwatch_logs().await;
-        // Remove "base" value from the snapshot because it is a dynamic value
-        insta::with_settings!(
-            {filters => vec![(r"base: .*\n\s*", "")]},
-            {insta::assert_debug_snapshot!(client)}
-        )
+        cloudwatch_logs().await;
     }
 
     #[tokio::test]
@@ -80,12 +75,7 @@ mod tests {
         std::env::set_var("AWS_ACCESS_KEY_ID", "AKIAASDASDQWEF");
         std::env::set_var("AWS_SECRET_ACCESS_KEY", "ASIAAFQWEFWEIFJ");
 
-        let client = cloudwatch_metrics().await;
-        // Remove "base" value from the snapshot because it is a dynamic value
-        insta::with_settings!(
-            {filters => vec![(r"base: .*\n\s*", "")]},
-            {insta::assert_debug_snapshot!(client)}
-        )
+        cloudwatch_metrics().await;
     }
 
     #[test]

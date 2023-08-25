@@ -1,4 +1,4 @@
-use aws_sdk_cloudwatch::model::MetricDatum;
+use aws_sdk_cloudwatch::types::MetricDatum;
 use log::warn;
 
 use crate::{cloudwatch_metrics_traits::PutMetricData, global::metric_namespace};
@@ -55,12 +55,12 @@ pub async fn publish_metric(client: impl PutMetricData, metric: Metric) {
 
 #[cfg(test)]
 mod tests {
-    use crate::error::{Error, Severity};
+    
 
     use super::*;
     use async_trait::async_trait;
-    use aws_sdk_cloudwatch::{error::PutMetricDataError, output::PutMetricDataOutput};
-    use aws_smithy_client::SdkError;
+    use aws_sdk_cloudwatch::{operation::put_metric_data::PutMetricDataOutput, types::error::InternalServiceFault, Error as CloudWatchError};
+    
     use mockall::mock;
 
     #[test]
@@ -102,13 +102,7 @@ mod tests {
                 insta::assert_debug_snapshot!("CWMetricCall_publish_metrics_failed", metrics);
                 true
             })
-            // This type of error would never happen because it is "my" error type rather than an AWS error type. Luckily it doesn't matter -- we only care that an error happened.
-            .returning(|_, _| {
-                Err(SdkError::timeout_error(Box::new(Error {
-                    message: "Some error happened".to_string(),
-                    severity: Severity::Error,
-                })))
-            });
+            .returning(|_, _| Err(CloudWatchError::InternalServiceFault(InternalServiceFault::builder().build())));
 
         let metrics = vec![Metric::new(MetricName::Updated, 7.0), Metric::new(MetricName::Total, 9.0)];
 
@@ -124,7 +118,7 @@ mod tests {
                 &self,
                 namespace: String,
                 metric_data: Vec<MetricDatum>,
-            ) -> Result<PutMetricDataOutput, SdkError<PutMetricDataError>>;
+            ) -> Result<PutMetricDataOutput, CloudWatchError>;
         }
     }
 }

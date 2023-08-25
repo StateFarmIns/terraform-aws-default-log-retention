@@ -1,7 +1,9 @@
 use std::fmt::Display;
 
-use aws_smithy_client::SdkError;
 use serde::Serialize;
+
+use aws_sdk_cloudwatch::Error as CloudWatchError;
+use aws_sdk_cloudwatchlogs::Error as CloudWatchLogsError;
 
 #[derive(Debug, Serialize)]
 pub struct Error {
@@ -23,8 +25,18 @@ impl Display for Error {
     }
 }
 
-impl<E: std::error::Error + Display, R> From<SdkError<E, R>> for Error {
-    fn from(e: SdkError<E, R>) -> Self {
+// TODO: Can we find a common trait to implement From<> for instead of implementing for each client?
+impl From<CloudWatchError> for Error {
+    fn from(e: CloudWatchError) -> Self {
+        Self {
+            message: e.to_string(),
+            severity: Severity::Error,
+        }
+    }
+}
+
+impl From<CloudWatchLogsError> for Error {
+    fn from(e: CloudWatchLogsError) -> Self {
         Self {
             message: e.to_string(),
             severity: Severity::Error,
