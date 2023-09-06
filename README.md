@@ -3,6 +3,11 @@
 
 By default, AWS does not set a default retention on Log Groups, meaning that any logs emitted today are kept forever. This module aims to solve that in an automated fashion, rather than requiring you to set retention on all Log Groups yourself.
 
+# Prerequisites
+CloudTrail must be logging to a bucket in the account, otherwise the event-driven Lambda will not run. The global Lambda will still pick up events.
+
+See [Terraform documentation](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudtrail) for creating a basic CloudTrail.
+
 # Detail
 It behaves in 2 ways:
 * A one-time run which sets retention for all existing log groups ("Global Retention Setter" in diagram below)
