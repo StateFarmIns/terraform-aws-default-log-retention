@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.0...v1.0.1) (2023-09-05)
+
+
+### Bug Fixes
+
+* 🐛 Fix a validation error in the client ([4a13406](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/4a13406d2df22b89fb9823dd95d07d6497b012a4))
+
 # 1.0.0 (2023-08-25)
 
 

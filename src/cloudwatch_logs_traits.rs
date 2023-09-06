@@ -83,8 +83,8 @@ impl DescribeLogGroups for CloudWatchLogs {
         Ok(self
             .client
             .describe_log_groups()
-            .log_group_name_prefix(log_group_name_prefix.unwrap_or_default())
-            .next_token(next_token.unwrap_or_default())
+            .set_log_group_name_prefix(log_group_name_prefix)
+            .set_next_token(next_token)
             .send()
             .await?)
     }
