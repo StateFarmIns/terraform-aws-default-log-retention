@@ -22,7 +22,7 @@ data "aws_iam_policy_document" "log_retention" {
       "logs:PutRetentionPolicy",
       "logs:DescribeLogGroups"
     ]
-    resources = ["arn:aws:logs:*:*:*"]
+    resources = ["arn:${data.aws_partition.current.partition}:logs:*:*:*"]
   }
 
   statement {

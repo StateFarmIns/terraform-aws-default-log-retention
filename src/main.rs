@@ -7,7 +7,7 @@ use terraform_aws_default_log_retention::{
     cloudwatch_metrics_traits::PutMetricData,
     error::{Error, Severity},
     event::CloudTrailEvent,
-    global::{cloudwatch_logs, cloudwatch_metrics, initialize_logger, log_group_tags, retention},
+    global::{aws_partition, cloudwatch_logs, cloudwatch_metrics, initialize_logger, log_group_tags, retention},
     metric_publisher::{self, Metric, MetricName},
     retention_setter::get_existing_retention,
 };
@@ -97,8 +97,11 @@ async fn process_event(
     }
 
     let log_group_arn = format!(
-        "arn:aws:logs:{}:{}:log-group:{}",
-        event.detail.aws_region, event.detail.user_identity.account_id, log_group_name
+        "arn:{}:logs:{}:{}:log-group:{}",
+        aws_partition(),
+        event.detail.aws_region,
+        event.detail.user_identity.account_id,
+        log_group_name
     );
     let tags = cloudwatch_logs.list_tags_for_resource(&log_group_arn).await?;
     if let Some(retention) = tags.tags().and_then(|tags| tags.get("retention")) {
@@ -229,6 +232,57 @@ mod tests {
             .await
             .expect("Should not fail");
 
+        insta::assert_debug_snapshot!(result);
+    }
+
+    #[tokio::test]
+    // Testing for govcloud or China
+    async fn test_process_event_success_no_tags_different_aws_partition() {
+        std::env::set_var("aws_partition", "aws-cn");
+        let event = CloudTrailEvent::new("123456789", "us-east-1", "MyLogGroupWasCreated");
+        let log_group_arn = "arn:aws-cn:logs:us-east-1:123456789:log-group:MyLogGroupWasCreated";
+
+        let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
+        mock_cloud_watch_logs_client
+            .expect_describe_log_groups()
+            .with(predicate::eq(Some("MyLogGroupWasCreated".to_string())), predicate::eq(None))
+            .once()
+            .returning(|_, _| mock_describe_log_groups_response("MyLogGroupWasCreated", 0));
+
+        mock_cloud_watch_logs_client
+            .expect_list_tags_for_resource()
+            .with(predicate::eq(log_group_arn))
+            .once()
+            .returning(|_| mock_list_tags_for_resource_response(None));
+
+        mock_cloud_watch_logs_client
+            .expect_put_retention_policy()
+            .with(predicate::eq("MyLogGroupWasCreated"), predicate::eq(30))
+            .once()
+            .returning(|_, _| Ok(PutRetentionPolicyOutput::builder().build()));
+
+        mock_cloud_watch_logs_client
+            .expect_tag_resource()
+            .with(predicate::eq(log_group_arn), predicate::eq(HashMap::new()))
+            .once()
+            .returning(|_, _| Ok(TagResourceOutput::builder().build()));
+
+        let mut mock_cloud_watch_metrics_client = MockCloudWatchMetrics::new();
+        mock_cloud_watch_metrics_client
+            .expect_put_metric_data()
+            .once()
+            .withf(|namespace, metrics| {
+                assert_eq!("LogRotation", namespace);
+                insta::assert_debug_snapshot!("CWMetricCall_process_event_success_no_tags", metrics);
+                true
+            })
+            .returning(|_, _| Ok(PutMetricDataOutput::builder().build()));
+
+        let result = process_event(event, mock_cloud_watch_logs_client, mock_cloud_watch_metrics_client)
+            .await
+            .expect("Should not fail");
+
+        std::env::remove_var("aws_partition");
         insta::assert_debug_snapshot!(result);
     }
 
@@ -487,12 +541,14 @@ mod tests {
         }
     }
 
+    #[allow(clippy::result_large_err)] // This is a test, don't care about large err type
     fn mock_describe_log_groups_response(log_group_name: &str, retention: i32) -> Result<DescribeLogGroupsOutput, CloudWatchLogsError> {
         let log_group = LogGroup::builder().log_group_name(log_group_name).retention_in_days(retention).build();
         let response = DescribeLogGroupsOutput::builder().log_groups(log_group).build();
         Ok(response)
     }
 
+    #[allow(clippy::result_large_err)] // This is a test, don't care about large err type
     fn mock_list_tags_for_resource_response(retention_tag_value: Option<&str>) -> Result<ListTagsForResourceOutput, CloudWatchLogsError> {
         if let Some(retention_tag_value) = retention_tag_value {
             let mut tags: HashMap<String, String> = HashMap::new();

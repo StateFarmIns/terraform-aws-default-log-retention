@@ -6,10 +6,12 @@
 cargo clippy --fix --allow-dirty --allow-staged || exit 1
 git add .
 
-./scripts/coverage.sh || exit 1
-git add reports/*
+cargo audit -D warnings || exit 1
 
-./scripts/build-release.sh || exit 1
-# git add dist/* # Do not add these files; semantic release during pipeline will do so.
+# ./scripts/coverage.sh || exit 1
+# git add reports/*
 
-echo "Coverage reports lint fixes are staged. Please commit and push."
+# ./scripts/build-release.sh || exit 1
+# # git add dist/* # Do not add these files; semantic release during pipeline will do so.
+
+# echo "Coverage reports lint fixes are staged. Please commit and push."

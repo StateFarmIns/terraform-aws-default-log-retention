@@ -50,6 +50,10 @@ pub fn metric_namespace() -> String {
     std::env::var("metric_namespace").unwrap_or_else(|_| "LogRotation".to_string())
 }
 
+pub fn aws_partition() -> String {
+    std::env::var("aws_partition").unwrap_or_else(|_| "aws".to_string())
+}
+
 pub fn initialize_logger() {
     env_logger::builder().format_timestamp(None).init();
 }

@@ -1,0 +1,8 @@
+---
+source: src/main.rs
+assertion_line: 286
+expression: result
+---
+Object {
+    "message": String("Retention set successfully"),
+}

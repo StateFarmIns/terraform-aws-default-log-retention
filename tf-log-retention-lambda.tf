@@ -23,6 +23,7 @@ resource "aws_lambda_function" "log_retention" {
       log_retention_in_days = var.log_retention_in_days
       log_group_tags        = local.log_group_tags_json
       metric_namespace      = var.metric_namespace
+      aws_partition         = data.aws_partition.current.partition
       RUST_BACKTRACE        = 1
       RUST_LOG              = "warn,terraform_aws_default_log_retention=${var.log_level}" # https://docs.rs/env_logger/latest/env_logger/
     }
