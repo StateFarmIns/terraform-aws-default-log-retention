@@ -91,6 +91,7 @@ mod tests {
         assert!(err.message.contains(group));
     }
 
+    #[allow(clippy::result_large_err)] // This is a test, don't care about large err type
     fn mock_describe_log_groups_response(log_group_name: &str, retention: i32) -> Result<DescribeLogGroupsOutput, CloudWatchLogsError> {
         let log_group = LogGroup::builder().log_group_name(log_group_name).retention_in_days(retention).build();
         let response = DescribeLogGroupsOutput::builder().log_groups(log_group).build();
