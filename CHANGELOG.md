@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.1...v1.0.2) (2023-11-10)
+
+
+### Bug Fixes
+
+* 🐛 Support non-primary AWS partitions (GovCloud, China) ([93d205b](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/93d205b4a4da302ce5fed62862ad2f326816740c))
+
 ## [1.0.1](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.0...v1.0.1) (2023-09-05)
 
 
