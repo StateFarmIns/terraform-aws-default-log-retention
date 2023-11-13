@@ -27,6 +27,7 @@ aws-sdk-cloudwatch = "0.30"
 aws-config = "0.56"
 aws-smithy-types = "0.56"
 async-trait = "0.1"
+cc = "=1.0.83" # TODO: Remove once https://github.com/cargo-lambda/cargo-lambda/issues/566 is fixed
 
 [dev-dependencies]
 insta = { version = "1.31", features = ["filters"] }
