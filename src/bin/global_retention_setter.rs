@@ -72,7 +72,7 @@ async fn process_all_log_groups(
     let mut next_token: Option<String> = None;
     loop {
         let result = cloudwatch_logs_client.describe_log_groups(None, next_token.take()).await?;
-        let log_groups = result.log_groups().unwrap_or_default();
+        let log_groups = result.log_groups();
 
         for log_group in log_groups {
             total_groups += 1;

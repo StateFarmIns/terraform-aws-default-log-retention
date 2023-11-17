@@ -8,7 +8,6 @@ pub async fn get_existing_retention(log_group_name: &str, client: &impl Describe
 
     let log_group = describe_log_groups_response
         .log_groups()
-        .unwrap_or_default()
         .iter()
         .find(|log_group| log_group.log_group_name().unwrap_or_default() == log_group_name);
 

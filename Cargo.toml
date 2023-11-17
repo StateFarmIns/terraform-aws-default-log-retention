@@ -13,22 +13,22 @@ lto = true # https://doc.rust-lang.org/cargo/reference/profiles.html#lto Big dif
 codegen-units = 1 # This is pretty extreme; eliminates parallel compilation. Makes a difference in binary size.
 
 [dependencies]
-tokio = { version = "1.32", features = ["macros"] }
+tokio = { version = "1.34", features = ["macros"] }
 log = "0.4"
-tracing-subscriber = { version = "0", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # NOTE: the following crate is not part of the SDK, but it is maintained by AWS.
 lambda_runtime = "0.8"
 serde_json = "1.0" 
 serde = "1.0"
-cached = "0.38"
+cached = { version = "0.46", features = ["async"] }
 env_logger = "0.10"
-aws-sdk-cloudwatchlogs = "0.30"
-aws-sdk-cloudwatch = "0.30"
-aws-config = "0.56"
-aws-smithy-types = "0.56"
+aws-sdk-cloudwatchlogs = "0.37"
+aws-sdk-cloudwatch = "0.37"
+aws-config = "0.100"
+aws-smithy-types = "0.100"
 async-trait = "0.1"
 
 [dev-dependencies]
-insta = { version = "1.31", features = ["filters"] }
+insta = { version = "1.34", features = ["filters"] }
 mockall = "0.11"
-ctor = "0.1"
+ctor = "0.2"
