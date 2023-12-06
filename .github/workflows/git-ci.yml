@@ -29,7 +29,19 @@ jobs:
         run: |
           npm i @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/git
           npx semantic-release
-        
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: global_retention_setter
+          path: dist/global_retention_setter/bootstrap
+          retention-days: 14 # Used for testing purposes on MR
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: log_retention_setter
+          path: dist/log_retention_setter/bootstrap
+          retention-days: 14 # Used for testing purposes on MR
+      
   test:
     runs-on: ubuntu-latest
     steps: 
