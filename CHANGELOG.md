@@ -1,3 +1,11 @@
+## [1.0.5](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.4...v1.0.5) (2023-12-07)
+
+
+### Bug Fixes
+
+* 🐛 Try to disable build optimizations ([56f661d](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/56f661db835647bd0bea8a8ebf3a730834fe78df))
+* 🐛 Upgrade to AL2023 provided runtime ([bc63c95](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/bc63c95047c99fb5048e513d698cf1483d6c3f8c))
+
 ## [1.0.4](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.3...v1.0.4) (2023-12-07)
 
 
