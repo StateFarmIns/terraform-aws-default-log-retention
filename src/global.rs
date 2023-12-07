@@ -1,6 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
-use aws_config::SdkConfig;
+use aws_config::{BehaviorVersion, SdkConfig};
 use aws_sdk_cloudwatch::Client as CloudWatchMetricsClient;
 use aws_sdk_cloudwatchlogs::Client as CloudWatchLogsClient;
 use aws_smithy_types::retry::{RetryConfig, RetryMode};
@@ -27,7 +27,7 @@ async fn sdk_config() -> SdkConfig {
         .with_max_attempts(10)
         .with_retry_mode(RetryMode::Adaptive);
 
-    aws_config::from_env().retry_config(retry_config).load().await
+    aws_config::defaults(BehaviorVersion::v2023_11_09()).retry_config(retry_config).load().await
 }
 
 #[cfg_attr(not(test), cached)] // Disables caching for tests https://github.com/jaemk/cached/issues/130
