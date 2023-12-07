@@ -9,8 +9,8 @@ resource "aws_lambda_function" "global_log_retention" {
   function_name    = local.global_log_retention_lambda_name
   filename         = data.archive_file.global_log_retention.output_path
   source_code_hash = data.archive_file.global_log_retention.output_base64sha256
-  runtime          = "provided.al2"
-  architectures    = ["arm64"]
+  runtime          = local.runtime
+  architectures    = local.architectures
   handler          = "bootstrap"
   role             = aws_iam_role.log_retention.arn
   timeout          = 900
