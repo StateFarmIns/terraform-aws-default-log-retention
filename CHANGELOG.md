@@ -1,3 +1,15 @@
+## [1.0.4](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.3...v1.0.4) (2023-12-07)
+
+
+### Bug Fixes
+
+* 🐛 Fix ring (updgrade CC) ([ac938a3](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/ac938a3d1251759f25bf7a34c71a640a6da651f9))
+* 🐛 Pin cc to version per GitHub issue in comment ([916cfbf](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/916cfbf13bbbfbf70710a5d5faca13f9233cca91))
+* 🐛 Revert ([ecd4285](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/ecd428502bde8a19eb9ea25c6a3043c813c21b03))
+* 🐛 Update dependencies again ([301f1c3](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/301f1c32662a7f146660645e78536088d5ebe3b1))
+* 🐛 Update dependencies to latest ([d5c16bc](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/d5c16bc7b867e29d7658cc6e69fdc8eeb4d9257f))
+* 🐛 Upgrade again ([45397dd](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/45397dd459f6b413c640c115a824cc168584ec5b))
+
 ## [1.0.2](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.1...v1.0.2) (2023-11-10)
 
 
