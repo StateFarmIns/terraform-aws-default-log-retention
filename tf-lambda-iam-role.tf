@@ -44,7 +44,7 @@ data "aws_iam_policy_document" "log_retention" {
     for_each = var.kms_key_arn == null ? [] : [var.kms_key_arn]
     content {
       actions   = ["kms:GenerateDataKey"]
-      resources = [each.value]
+      resources = [statement.value]
     }
   }
 
