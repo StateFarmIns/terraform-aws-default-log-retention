@@ -24,3 +24,5 @@ reports/tarpaulin-report.html
 # DrawIO Temp Files
 .$*.bkp
 .$*.dtmp
+
+sample/
