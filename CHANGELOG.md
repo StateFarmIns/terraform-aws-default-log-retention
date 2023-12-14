@@ -1,3 +1,10 @@
+## [1.0.7](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.6...v1.0.7) (2023-12-14)
+
+
+### Bug Fixes
+
+* 🐛 Fix Lambda KMS permissions ([8d2e6da](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/8d2e6da3277f69e6091a60ea1ffdd123f603a008))
+
 ## [1.0.6](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.5...v1.0.6) (2023-12-13)
 
 
