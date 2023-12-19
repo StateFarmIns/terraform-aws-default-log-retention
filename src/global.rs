@@ -77,7 +77,20 @@ mod tests {
 
     use crate::global::retention;
 
-    use super::{cloudwatch_logs, initialize_logger, log_group_tags};
+    use super::{cloudwatch_logs, initialize_logger, initialize_metrics, log_group_tags};
+
+    #[test]
+    fn test_initialize_metrics() {
+        std::env::set_var("AWS_LAMBDA_FUNCTION_NAME", "test-function-name");
+        initialize_metrics();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_initialize_metrics_outside_lambda() {
+        std::env::remove_var("AWS_LAMBDA_FUNCTION_NAME");
+        initialize_metrics();
+    }
 
     #[tokio::test]
     async fn test_cw_logs_client() {
