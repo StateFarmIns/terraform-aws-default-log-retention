@@ -1,23 +1,16 @@
 use std::{collections::HashMap, time::Duration};
 
 use aws_config::{BehaviorVersion, SdkConfig};
-use aws_sdk_cloudwatch::Client as CloudWatchMetricsClient;
 use aws_sdk_cloudwatchlogs::Client as CloudWatchLogsClient;
 use aws_smithy_types::retry::{RetryConfig, RetryMode};
 use cached::proc_macro::cached;
 
-use crate::{cloudwatch_logs_traits::CloudWatchLogs, cloudwatch_metrics_traits::CloudWatchMetrics};
+use crate::cloudwatch_logs_traits::CloudWatchLogs;
 
 #[cached]
 pub async fn cloudwatch_logs() -> CloudWatchLogs {
     let sdk_config = sdk_config().await;
     CloudWatchLogs::new(CloudWatchLogsClient::new(&sdk_config))
-}
-
-#[cached]
-pub async fn cloudwatch_metrics() -> CloudWatchMetrics {
-    let sdk_config = sdk_config().await;
-    CloudWatchMetrics::new(CloudWatchMetricsClient::new(&sdk_config))
 }
 
 #[cached]
@@ -64,7 +57,7 @@ mod tests {
 
     use crate::global::retention;
 
-    use super::{cloudwatch_logs, cloudwatch_metrics, initialize_logger, log_group_tags};
+    use super::{cloudwatch_logs, initialize_logger, log_group_tags};
 
     #[tokio::test]
     async fn test_cw_logs_client() {
@@ -72,14 +65,6 @@ mod tests {
         std::env::set_var("AWS_SECRET_ACCESS_KEY", "ASIAAFQWEFWEIFJ");
 
         cloudwatch_logs().await;
-    }
-
-    #[tokio::test]
-    async fn test_cw_metrics_client() {
-        std::env::set_var("AWS_ACCESS_KEY_ID", "AKIAASDASDQWEF");
-        std::env::set_var("AWS_SECRET_ACCESS_KEY", "ASIAAFQWEFWEIFJ");
-
-        cloudwatch_metrics().await;
     }
 
     #[test]
