@@ -1,3 +1,11 @@
+# [1.1.0](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.7...v1.1.0) (2023-12-19)
+
+
+### Features
+
+* 🎸 Swap to embedded metric format ([2acbaab](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/2acbaab22f30459fc1bb29b0a5c8f8e9cca7010f))
+* 🎸 Update dependencies and run formatter ([f688be4](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/f688be43089a0d2ecfabb7d956d840405a529eaf))
+
 ## [1.0.7](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.6...v1.0.7) (2023-12-14)
 
 
