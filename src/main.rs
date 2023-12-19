@@ -2,12 +2,12 @@ use lambda_runtime::{Context, Error as LambdaRuntimeError, LambdaEvent};
 
 use log::{debug, error, info, trace, warn};
 use serde_json::{json, Value as JsonValue};
+use terraform_aws_default_log_retention::global::initialize_metrics;
 use terraform_aws_default_log_retention::{
     cloudwatch_logs_traits::{DescribeLogGroups, ListTagsForResource, PutRetentionPolicy, TagResource},
-    cloudwatch_metrics_traits::PutMetricData,
     error::{Error, Severity},
     event::CloudTrailEvent,
-    global::{aws_partition, cloudwatch_logs, cloudwatch_metrics, initialize_logger, log_group_tags, retention},
+    global::{aws_partition, cloudwatch_logs, initialize_logger, log_group_tags, retention},
     metric_publisher::{self, Metric, MetricName},
     retention_setter::get_existing_retention,
 };
@@ -17,14 +17,12 @@ use terraform_aws_default_log_retention::{
 // Ignore for code coverage
 #[cfg(not(tarpaulin_include))]
 async fn main() -> Result<(), LambdaRuntimeError> {
-    trace!("Initializing logger...");
     initialize_logger();
 
-    trace!("Initializing service function...");
-    let func = lambda_runtime::service_fn(func);
+    let metrics = initialize_metrics();
 
     trace!("Getting runtime result...");
-    let result = lambda_runtime::run(func).await;
+    let result = metrics_cloudwatch_embedded::lambda::handler::run(metrics, func).await;
 
     match result {
         Ok(message) => {
@@ -43,14 +41,13 @@ async fn main() -> Result<(), LambdaRuntimeError> {
 async fn func(event: LambdaEvent<JsonValue>) -> Result<JsonValue, LambdaRuntimeError> {
     debug!("Received payload: {}. Context: {:?}", event.payload, event.context);
     let cloudwatch_logs = cloudwatch_logs().await;
-    let cloudwatch_metrics = cloudwatch_metrics().await;
     let cloud_trail_event = parse_event(event.payload, Some(event.context));
     if let Err(error) = cloud_trail_event {
         return process_error(error);
     }
     let cloud_trail_event = cloud_trail_event.expect("Should be Ok() based on above code.");
 
-    let result = process_event(cloud_trail_event, cloudwatch_logs, cloudwatch_metrics).await;
+    let result = process_event(cloud_trail_event, cloudwatch_logs).await;
 
     match result {
         Ok(message) => Ok(message),
@@ -75,7 +72,6 @@ fn process_error(error: Error) -> Result<JsonValue, LambdaRuntimeError> {
 async fn process_event(
     event: CloudTrailEvent,
     cloudwatch_logs: impl DescribeLogGroups + ListTagsForResource + PutRetentionPolicy + TagResource,
-    cloudwatch_metrics: impl PutMetricData,
 ) -> Result<JsonValue, Error> {
     let log_group_name = event.detail.request_parameters.log_group_name;
 
@@ -86,7 +82,7 @@ async fn process_event(
             "Not setting retention for {} because it is set to {} days already.",
             log_group_name, existing_retention
         );
-        metric_publisher::publish_metric(cloudwatch_metrics, Metric::new(MetricName::AlreadyHasRetention, 1.0)).await;
+        metric_publisher::publish_metric(Metric::new(MetricName::AlreadyHasRetention, 1));
         return Ok(json!({
             "message":
                 format!(
@@ -109,7 +105,7 @@ async fn process_event(
             "Not setting retention for {} because tag `retention`=`{}` exists on it.",
             log_group_name, retention
         );
-        metric_publisher::publish_metric(cloudwatch_metrics, Metric::new(MetricName::AlreadyTaggedWithRetention, 1.0)).await;
+        metric_publisher::publish_metric(Metric::new(MetricName::AlreadyTaggedWithRetention, 1));
         return Ok(json!({
             "message":
                 format!(
@@ -121,7 +117,7 @@ async fn process_event(
 
     cloudwatch_logs.put_retention_policy(&log_group_name, retention()).await?;
 
-    metric_publisher::publish_metric(cloudwatch_metrics, Metric::new(MetricName::Updated, 1.0)).await;
+    metric_publisher::publish_metric(Metric::new(MetricName::Updated, 1));
 
     if let Some(tags) = log_group_tags() {
         cloudwatch_logs.tag_resource(&log_group_arn, tags).await?;
@@ -162,7 +158,6 @@ mod tests {
     use std::collections::HashMap;
 
     use async_trait::async_trait;
-    use aws_sdk_cloudwatch::{operation::put_metric_data::PutMetricDataOutput, types::MetricDatum, Error as CloudWatchError};
     use aws_sdk_cloudwatchlogs::{
         operation::{
             describe_log_groups::DescribeLogGroupsOutput, list_tags_for_resource::ListTagsForResourceOutput, put_retention_policy::PutRetentionPolicyOutput,
@@ -174,11 +169,11 @@ mod tests {
     use lambda_runtime::{Context, LambdaEvent};
     use mockall::{mock, predicate};
     use serde_json::json;
+    use terraform_aws_default_log_retention::event::CloudTrailEvent;
     use terraform_aws_default_log_retention::{
         cloudwatch_logs_traits::{DescribeLogGroups, ListTagsForResource, PutRetentionPolicy, TagResource},
         error::{Error, Severity},
     };
-    use terraform_aws_default_log_retention::{cloudwatch_metrics_traits::PutMetricData, event::CloudTrailEvent};
 
     use crate::{func, parse_event, process_error, process_event};
 
@@ -217,20 +212,7 @@ mod tests {
             .once()
             .returning(|_, _| Ok(TagResourceOutput::builder().build()));
 
-        let mut mock_cloud_watch_metrics_client = MockCloudWatchMetrics::new();
-        mock_cloud_watch_metrics_client
-            .expect_put_metric_data()
-            .once()
-            .withf(|namespace, metrics| {
-                assert_eq!("LogRotation", namespace);
-                insta::assert_debug_snapshot!("CWMetricCall_process_event_success_no_tags", metrics);
-                true
-            })
-            .returning(|_, _| Ok(PutMetricDataOutput::builder().build()));
-
-        let result = process_event(event, mock_cloud_watch_logs_client, mock_cloud_watch_metrics_client)
-            .await
-            .expect("Should not fail");
+        let result = process_event(event, mock_cloud_watch_logs_client).await.expect("Should not fail");
 
         insta::assert_debug_snapshot!(result);
     }
@@ -267,20 +249,7 @@ mod tests {
             .once()
             .returning(|_, _| Ok(TagResourceOutput::builder().build()));
 
-        let mut mock_cloud_watch_metrics_client = MockCloudWatchMetrics::new();
-        mock_cloud_watch_metrics_client
-            .expect_put_metric_data()
-            .once()
-            .withf(|namespace, metrics| {
-                assert_eq!("LogRotation", namespace);
-                insta::assert_debug_snapshot!("CWMetricCall_process_event_success_no_tags", metrics);
-                true
-            })
-            .returning(|_, _| Ok(PutMetricDataOutput::builder().build()));
-
-        let result = process_event(event, mock_cloud_watch_logs_client, mock_cloud_watch_metrics_client)
-            .await
-            .expect("Should not fail");
+        let result = process_event(event, mock_cloud_watch_logs_client).await.expect("Should not fail");
 
         std::env::remove_var("aws_partition");
         insta::assert_debug_snapshot!(result);
@@ -313,9 +282,7 @@ mod tests {
                 ))
             });
 
-        let error = process_event(event, mock_cloud_watch_logs_client, MockCloudWatchMetrics::new())
-            .await
-            .expect_err("Should fail");
+        let error = process_event(event, mock_cloud_watch_logs_client).await.expect_err("Should fail");
 
         insta::assert_debug_snapshot!(error);
     }
@@ -356,20 +323,7 @@ mod tests {
                 ))
             });
 
-        let mut mock_cloud_watch_metrics_client = MockCloudWatchMetrics::new();
-        mock_cloud_watch_metrics_client
-            .expect_put_metric_data()
-            .once()
-            .withf(|namespace, metrics| {
-                assert_eq!("LogRotation", namespace);
-                insta::assert_debug_snapshot!("CWMetricCall_process_event_fails_when_tag_log_group_fails", metrics);
-                true
-            })
-            .returning(|_, _| Ok(PutMetricDataOutput::builder().build()));
-
-        let error = process_event(event, mock_cloud_watch_logs_client, mock_cloud_watch_metrics_client)
-            .await
-            .expect_err("Should fail");
+        let error = process_event(event, mock_cloud_watch_logs_client).await.expect_err("Should fail");
 
         insta::assert_debug_snapshot!(error);
     }
@@ -385,20 +339,7 @@ mod tests {
             .once()
             .returning(|_, _| mock_describe_log_groups_response("MyLogGroupWasCreated", 30));
 
-        let mut mock_cloud_watch_metrics_client = MockCloudWatchMetrics::new();
-        mock_cloud_watch_metrics_client
-            .expect_put_metric_data()
-            .once()
-            .withf(|namespace, metrics| {
-                assert_eq!("LogRotation", namespace);
-                insta::assert_debug_snapshot!("CWMetricCall_process_event_retention_already_set", metrics);
-                true
-            })
-            .returning(|_, _| Ok(PutMetricDataOutput::builder().build()));
-
-        let result = process_event(event, mock_cloud_watch_logs_client, mock_cloud_watch_metrics_client)
-            .await
-            .expect("Should not fail");
+        let result = process_event(event, mock_cloud_watch_logs_client).await.expect("Should not fail");
 
         insta::assert_debug_snapshot!(result);
     }
@@ -420,20 +361,7 @@ mod tests {
             .once()
             .returning(|_| mock_list_tags_for_resource_response(Some("Do not override please")));
 
-        let mut mock_cloud_watch_metrics_client = MockCloudWatchMetrics::new();
-        mock_cloud_watch_metrics_client
-            .expect_put_metric_data()
-            .once()
-            .withf(|namespace, metrics| {
-                assert_eq!("LogRotation", namespace);
-                insta::assert_debug_snapshot!("CWMetricCall_process_event_do_not_overwrite_when_retention_tag_set", metrics);
-                true
-            })
-            .returning(|_, _| Ok(PutMetricDataOutput::builder().build()));
-
-        let result = process_event(event, mock_cloud_watch_logs_client, mock_cloud_watch_metrics_client)
-            .await
-            .expect("Should not fail");
+        let result = process_event(event, mock_cloud_watch_logs_client).await.expect("Should not fail");
 
         insta::assert_debug_snapshot!(result);
     }
@@ -525,19 +453,6 @@ mod tests {
                 log_group_arn: &str,
                 tags: HashMap<String, String>
             ) -> Result<TagResourceOutput, CloudWatchLogsError>;
-        }
-    }
-
-    mock! {
-        pub CloudWatchMetrics {}
-
-        #[async_trait]
-        impl PutMetricData for CloudWatchMetrics {
-            async fn put_metric_data(
-                &self,
-                namespace: String,
-                metric_data: Vec<MetricDatum>,
-            ) -> Result<PutMetricDataOutput, CloudWatchError>;
         }
     }
 

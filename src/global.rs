@@ -1,23 +1,19 @@
 use std::{collections::HashMap, time::Duration};
 
 use aws_config::{BehaviorVersion, SdkConfig};
-use aws_sdk_cloudwatch::Client as CloudWatchMetricsClient;
 use aws_sdk_cloudwatchlogs::Client as CloudWatchLogsClient;
 use aws_smithy_types::retry::{RetryConfig, RetryMode};
 use cached::proc_macro::cached;
+use log::trace;
+use metrics_cloudwatch_embedded::Collector;
+use tracing::info_span;
 
-use crate::{cloudwatch_logs_traits::CloudWatchLogs, cloudwatch_metrics_traits::CloudWatchMetrics};
+use crate::cloudwatch_logs_traits::CloudWatchLogs;
 
 #[cached]
 pub async fn cloudwatch_logs() -> CloudWatchLogs {
     let sdk_config = sdk_config().await;
     CloudWatchLogs::new(CloudWatchLogsClient::new(&sdk_config))
-}
-
-#[cached]
-pub async fn cloudwatch_metrics() -> CloudWatchMetrics {
-    let sdk_config = sdk_config().await;
-    CloudWatchMetrics::new(CloudWatchMetricsClient::new(&sdk_config))
 }
 
 #[cached]
@@ -55,7 +51,24 @@ pub fn aws_partition() -> String {
 }
 
 pub fn initialize_logger() {
+    trace!("Initializing logger...");
     env_logger::builder().format_timestamp(None).init();
+}
+
+pub fn initialize_metrics() -> &'static Collector {
+    trace!("Initializing metrics emitter...");
+
+    let lambda_function_name =
+        std::env::var("AWS_LAMBDA_FUNCTION_NAME").expect("Could not determine Lambda function name. Is this code being run in AWS Lambda?");
+
+    metrics_cloudwatch_embedded::Builder::new()
+        .cloudwatch_namespace(metric_namespace())
+        .with_dimension("function", lambda_function_name)
+        .with_lambda_request_id("RequestId")
+        .lambda_cold_start_metric("ColdStart")
+        .lambda_cold_start_span(info_span!("cold start").entered())
+        .init()
+        .expect("Could not instantiate metric emitter.")
 }
 
 #[cfg(test)]
@@ -64,7 +77,20 @@ mod tests {
 
     use crate::global::retention;
 
-    use super::{cloudwatch_logs, cloudwatch_metrics, initialize_logger, log_group_tags};
+    use super::{cloudwatch_logs, initialize_logger, initialize_metrics, log_group_tags};
+
+    #[test]
+    fn test_initialize_metrics() {
+        std::env::set_var("AWS_LAMBDA_FUNCTION_NAME", "test-function-name");
+        initialize_metrics();
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_initialize_metrics_outside_lambda() {
+        std::env::remove_var("AWS_LAMBDA_FUNCTION_NAME");
+        initialize_metrics();
+    }
 
     #[tokio::test]
     async fn test_cw_logs_client() {
@@ -72,14 +98,6 @@ mod tests {
         std::env::set_var("AWS_SECRET_ACCESS_KEY", "ASIAAFQWEFWEIFJ");
 
         cloudwatch_logs().await;
-    }
-
-    #[tokio::test]
-    async fn test_cw_metrics_client() {
-        std::env::set_var("AWS_ACCESS_KEY_ID", "AKIAASDASDQWEF");
-        std::env::set_var("AWS_SECRET_ACCESS_KEY", "ASIAAFQWEFWEIFJ");
-
-        cloudwatch_metrics().await;
     }
 
     #[test]
