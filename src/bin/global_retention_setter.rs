@@ -112,11 +112,9 @@ async fn process_all_log_groups(
     metric_publisher::publish_metrics(metrics);
 
     match errors.is_empty() {
-        true => {
-            Ok(
-                json!({"message": "Success", "totalGroups": total_groups, "updated": updated, "alreadyHasRetention": already_has_retention, "alreadyTaggedWithRetention": already_tagged_with_retention}),
-            )
-        }
+        true => Ok(
+            json!({"message": "Success", "totalGroups": total_groups, "updated": updated, "alreadyHasRetention": already_has_retention, "alreadyTaggedWithRetention": already_tagged_with_retention}),
+        ),
         false => {
             error!("Failed to update some log group retentions: {:?}", &errors);
             Err(Error {

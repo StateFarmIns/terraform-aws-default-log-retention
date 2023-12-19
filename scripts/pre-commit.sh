@@ -4,8 +4,7 @@
 ./scripts/test.sh || exit 1
 
 cargo clippy --fix --allow-dirty --allow-staged || exit 1
-git add .
-
+cargo fmt || exit 1
 cargo audit -D warnings || exit 1
 
 # ./scripts/coverage.sh || exit 1
