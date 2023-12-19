@@ -4,6 +4,9 @@ use aws_config::{BehaviorVersion, SdkConfig};
 use aws_sdk_cloudwatchlogs::Client as CloudWatchLogsClient;
 use aws_smithy_types::retry::{RetryConfig, RetryMode};
 use cached::proc_macro::cached;
+use log::trace;
+use metrics_cloudwatch_embedded::Collector;
+use tracing::info_span;
 
 use crate::cloudwatch_logs_traits::CloudWatchLogs;
 
@@ -48,7 +51,24 @@ pub fn aws_partition() -> String {
 }
 
 pub fn initialize_logger() {
+    trace!("Initializing logger...");
     env_logger::builder().format_timestamp(None).init();
+}
+
+pub fn initialize_metrics() -> &'static Collector {
+    trace!("Initializing metrics emitter...");
+
+    let lambda_function_name =
+        std::env::var("AWS_LAMBDA_FUNCTION_NAME").expect("Could not determine Lambda function name. Is this code being run in AWS Lambda?");
+
+    metrics_cloudwatch_embedded::Builder::new()
+        .cloudwatch_namespace(metric_namespace())
+        .with_dimension("function", lambda_function_name)
+        .with_lambda_request_id("RequestId")
+        .lambda_cold_start_metric("ColdStart")
+        .lambda_cold_start_span(info_span!("cold start").entered())
+        .init()
+        .expect("Could not instantiate metric emitter.")
 }
 
 #[cfg(test)]

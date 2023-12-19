@@ -2,14 +2,13 @@ use aws_sdk_cloudwatchlogs::types::LogGroup;
 use lambda_runtime::{Error as LambdaRuntimeError, LambdaEvent};
 use log::{debug, error, info, trace};
 use serde_json::{json, Value as JsonValue};
-use terraform_aws_default_log_retention::global::metric_namespace;
+use terraform_aws_default_log_retention::global::initialize_metrics;
 use terraform_aws_default_log_retention::{
     cloudwatch_logs_traits::{DescribeLogGroups, ListTagsForResource, PutRetentionPolicy, TagResource},
     error::{Error, Severity},
     global::{cloudwatch_logs, initialize_logger, log_group_tags, retention},
     metric_publisher::{self, Metric, MetricName},
 };
-use tracing::info_span;
 
 #[derive(Debug, PartialEq, Eq)]
 enum UpdateResult {
@@ -22,20 +21,9 @@ enum UpdateResult {
 // Ignore for code coverage
 #[cfg(not(tarpaulin_include))]
 async fn main() -> Result<(), LambdaRuntimeError> {
-    trace!("Initializing metrics emitter...");
-    let lambda_function_name =
-        std::env::var("AWS_LAMBDA_FUNCTION_NAME").expect("Could not determine Lambda function name. Is this code being run in AWS Lambda?");
-    let metrics = metrics_cloudwatch_embedded::Builder::new()
-        .cloudwatch_namespace(metric_namespace())
-        .with_dimension("function", lambda_function_name)
-        .with_lambda_request_id("RequestId")
-        .lambda_cold_start_metric("ColdStart")
-        .lambda_cold_start_span(info_span!("cold start").entered())
-        .init()
-        .expect("Could not instantiate metric emitter.");
-
-    trace!("Initializing logger...");
     initialize_logger();
+
+    let metrics = initialize_metrics();
 
     trace!("Getting runtime result...");
     let result = metrics_cloudwatch_embedded::lambda::handler::run(metrics, func).await;
