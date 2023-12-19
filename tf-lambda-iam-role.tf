@@ -30,16 +30,6 @@ data "aws_iam_policy_document" "log_retention" {
     resources = ["*"]
   }
 
-  statement {
-    actions   = ["cloudwatch:PutMetricData"]
-    resources = ["*"]
-    condition {
-      test     = "StringEquals"
-      variable = "cloudwatch:namespace"
-      values   = [var.metric_namespace]
-    }
-  }
-
   dynamic "statement" {
     for_each = var.kms_key_arn == null ? [] : [var.kms_key_arn]
     content {
