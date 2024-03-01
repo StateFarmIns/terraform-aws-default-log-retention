@@ -28,3 +28,7 @@ Before you request to submit a change, be sure an issue is created on the board 
 5. Don't forget to link the PR to the original issue if you are solving one
 6. Enable the checkbox to [allow maintainer edits]([url](https://docs.github.com/en/github/collaborating-with-issues-and-pull-requests/allowing-changes-to-a-pull-request-branch-created-from-a-fork)) so the branch can be updated for a merge. Once you submit your PR, a maintainer will review your proposal. We may ask questions or request additional information.
 7. Once all changes have been made and the PR has been approved, a 'maintainer' will merge the request into the repositoy
+
+8. ### Contribution License Agreement (CLA)
+
+All external contributions to State Farm open source must include a signed [Contribution License Agreement](https://github.com/StateFarmIns/.github/blob/master/CONTRIBUTION_LICENSE_AGREEMENT.MD) in order to be accepted by the project. Please work with project maintainers to ensure that this agreement has been signed and included with your contribution.
