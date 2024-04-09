@@ -255,7 +255,7 @@ mod tests {
 
         let result = process_all_log_groups(mock_cloud_watch_logs_client).await.expect("Should not fail");
 
-        insta::assert_display_snapshot!(result);
+        insta::assert_snapshot!(result);
     }
 
     #[tokio::test]
@@ -279,7 +279,7 @@ mod tests {
 
         let result = process_all_log_groups(mock_cloud_watch_logs_client).await.expect("Should not fail");
 
-        insta::assert_display_snapshot!(result);
+        insta::assert_snapshot!(result);
     }
 
     #[tokio::test]
@@ -375,7 +375,7 @@ mod tests {
 
         let result = process_all_log_groups(mock_cloud_watch_logs_client).await.expect_err("Should fail");
 
-        insta::assert_display_snapshot!(result);
+        insta::assert_snapshot!(result);
     }
 
     #[tokio::test]
