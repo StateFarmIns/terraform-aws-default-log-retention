@@ -15,16 +15,11 @@ jobs:
           node-version: 20
       - uses: goto-bus-stop/setup-zig@v2
       - name: Install latest stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
           components: rustfmt, clippy
-      - name: Install cargo commands
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-lambda cargo-insta
+      - name: Install Tools
+        run: cargo install cargo-lambda cargo-insta
       - name: Build
         run: ./scripts/build-release.sh # Builds for ARM Lambda
       - name: Release
@@ -32,13 +27,13 @@ jobs:
           npm i @semantic-release/commit-analyzer @semantic-release/release-notes-generator @semantic-release/changelog @semantic-release/git
           npx semantic-release
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: global_retention_setter
           path: dist/global_retention_setter/bootstrap
           retention-days: 14 # Used for testing purposes on MR
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: log_retention_setter
           path: dist/log_retention_setter/bootstrap
@@ -49,30 +44,20 @@ jobs:
     steps: 
       - uses: actions/checkout@v2
       - name: Install latest stable
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          override: true
           components: rustfmt, clippy
-      - name: Install cargo commands
-        uses: actions-rs/cargo@v1
-        with:
-          command: install
-          args: cargo-lambda cargo-insta
+      - name: Install Tools
+        run: cargo install cargo-lambda cargo-insta
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-            command: test
-            args: -- --test-threads=1
+        run: cargo test -- --test-threads=1
 
   audit: 
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - uses: actions-rs/cargo@v1
-        with:
-          command: audit
-          args: -D warnings
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Tools
+        run: cargo install cargo-audit
+      - name: Run cargo audit
+        run: cargo audit -D warnings
