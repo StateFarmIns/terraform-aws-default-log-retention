@@ -23,7 +23,7 @@ async fn sdk_config() -> SdkConfig {
         .with_max_attempts(10)
         .with_retry_mode(RetryMode::Adaptive);
 
-    aws_config::defaults(BehaviorVersion::v2023_11_09()).retry_config(retry_config).load().await
+    aws_config::defaults(BehaviorVersion::v2025_01_17()).retry_config(retry_config).load().await
 }
 
 #[cfg_attr(not(test), cached)] // Disables caching for tests https://github.com/jaemk/cached/issues/130
@@ -66,7 +66,7 @@ pub fn initialize_metrics() -> &'static Collector {
         .with_dimension("function", lambda_function_name)
         .with_lambda_request_id("RequestId")
         .lambda_cold_start_metric("ColdStart")
-        .lambda_cold_start_span(info_span!("cold start").entered())
+        .lambda_cold_start_span(info_span!("cold start"))
         .init()
         .expect("Could not instantiate metric emitter.")
 }
