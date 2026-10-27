@@ -13,7 +13,7 @@ lto = true # https://doc.rust-lang.org/cargo/reference/profiles.html#lto Big dif
 codegen-units = 1 # This is pretty extreme; eliminates parallel compilation. Makes a difference in binary size.
 
 [dependencies]
-tokio = { version = "1.34", features = ["macros"] }
+tokio = { version = "1.38", features = ["macros"] }
 log = "0.4"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 # NOTE: the following crate is not part of the SDK, but it is maintained by AWS.
