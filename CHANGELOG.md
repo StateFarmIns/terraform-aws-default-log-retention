@@ -1,3 +1,10 @@
+## [1.1.1](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.1.0...v1.1.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **deps:** 🤖 Upgrade all dependencies to latest ([8cbf62f](https://github.com/StateFarmIns/terraform-aws-default-log-retention/commit/8cbf62fb405cf4780f1282fe0afb91c82f3db822))
+
 # [1.1.0](https://github.com/StateFarmIns/terraform-aws-default-log-retention/compare/v1.0.7...v1.1.0) (2023-12-19)
 
 
