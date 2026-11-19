@@ -174,13 +174,15 @@ mod tests {
 
     use terraform_aws_default_log_retention::cloudwatch_logs_traits::{PutRetentionPolicy, TagResource};
 
-    #[ctor::ctor]
-    fn init() {
+    /// Tests below expect `log_group_tags` to be set to an empty map.
+    /// Tests run single-threaded (`--test-threads=1`), so mutating the environment is safe.
+    fn set_empty_log_group_tags() {
         std::env::set_var("log_group_tags", "{}");
     }
 
     #[tokio::test]
     async fn test_process_all_log_group_success() {
+        set_empty_log_group_tags();
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         mock_cloud_watch_logs_client
             .expect_describe_log_groups()
@@ -284,6 +286,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_all_log_group_partial_success() {
+        set_empty_log_group_tags();
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         mock_cloud_watch_logs_client
             .expect_describe_log_groups()
@@ -380,6 +383,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_log_group_success() {
+        set_empty_log_group_tags();
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         let log_group_arn = "arn:aws:logs:123:us-west-2:log-group/MyLogGroupWasCreated";
 

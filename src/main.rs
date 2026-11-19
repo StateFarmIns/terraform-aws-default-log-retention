@@ -177,13 +177,15 @@ mod tests {
 
     use crate::{func, parse_event, process_error, process_event};
 
-    #[ctor::ctor]
-    fn init() {
+    /// Tests below expect `log_group_tags` to be set to an empty map.
+    /// Tests run single-threaded (`--test-threads=1`), so mutating the environment is safe.
+    fn set_empty_log_group_tags() {
         std::env::set_var("log_group_tags", "{}");
     }
 
     #[tokio::test]
     async fn test_process_event_success_no_tags() {
+        set_empty_log_group_tags();
         let event = CloudTrailEvent::new("123456789", "us-east-1", "MyLogGroupWasCreated");
         let log_group_arn = "arn:aws:logs:us-east-1:123456789:log-group:MyLogGroupWasCreated";
 
@@ -220,6 +222,7 @@ mod tests {
     #[tokio::test]
     // Testing for govcloud or China
     async fn test_process_event_success_no_tags_different_aws_partition() {
+        set_empty_log_group_tags();
         std::env::set_var("aws_partition", "aws-cn");
         let event = CloudTrailEvent::new("123456789", "us-east-1", "MyLogGroupWasCreated");
         let log_group_arn = "arn:aws-cn:logs:us-east-1:123456789:log-group:MyLogGroupWasCreated";
@@ -289,6 +292,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_event_fails_when_tag_log_group_fails() {
+        set_empty_log_group_tags();
         let event = CloudTrailEvent::new("123456789", "us-east-1", "MyLogGroupWasCreated");
 
         let log_group_arn = "arn:aws:logs:us-east-1:123456789:log-group:MyLogGroupWasCreated";
