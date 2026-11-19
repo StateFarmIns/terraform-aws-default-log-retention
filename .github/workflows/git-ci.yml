@@ -50,7 +50,7 @@ jobs:
       - name: Install Tools
         run: cargo install cargo-lambda cargo-insta
       - name: Run cargo test
-        run: cargo test -- --test-threads=1
+        run: cargo test
 
   audit: 
     runs-on: ubuntu-latest
