@@ -34,7 +34,7 @@ pub fn publish_metrics(metrics: Vec<Metric>) {
 }
 
 pub fn publish_metric(metric: Metric) {
-    metrics::absolute_counter!(metric.name.to_string(), metric.value);
+    metrics::counter!(metric.name.to_string()).absolute(metric.value);
 }
 
 #[cfg(test)]
