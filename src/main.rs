@@ -1,13 +1,17 @@
+// Mocks return `aws_sdk_cloudwatchlogs::Error` (160+ bytes) from closures; only relevant in test builds.
+#![cfg_attr(test, allow(clippy::result_large_err))]
+
 use lambda_runtime::{Context, Error as LambdaRuntimeError, LambdaEvent};
 
 use log::{debug, error, info, trace, warn};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use terraform_aws_default_log_retention::global::initialize_metrics;
 use terraform_aws_default_log_retention::{
     cloudwatch_logs_traits::{DescribeLogGroups, ListTagsForResource, PutRetentionPolicy, TagResource},
+    config::Config,
     error::{Error, Severity},
     event::CloudTrailEvent,
-    global::{aws_partition, cloudwatch_logs, initialize_logger, log_group_tags, retention},
+    global::{cloudwatch_logs, initialize_logger},
     metric_publisher::{self, Metric, MetricName},
     retention_setter::get_existing_retention,
 };
@@ -19,10 +23,11 @@ use terraform_aws_default_log_retention::{
 async fn main() -> Result<(), LambdaRuntimeError> {
     initialize_logger();
 
-    let metrics = initialize_metrics();
+    let config = Config::from_env();
+    let metrics = initialize_metrics(&config);
 
     trace!("Getting runtime result...");
-    let result = metrics_cloudwatch_embedded::lambda::handler::run(metrics, func).await;
+    let result = metrics_cloudwatch_embedded::lambda::handler::run(metrics, |event| func(event, &config)).await;
 
     match result {
         Ok(message) => {
@@ -38,7 +43,7 @@ async fn main() -> Result<(), LambdaRuntimeError> {
 
 // Ignore for code coverage
 #[cfg(not(tarpaulin_include))]
-async fn func(event: LambdaEvent<JsonValue>) -> Result<JsonValue, LambdaRuntimeError> {
+async fn func(event: LambdaEvent<JsonValue>, config: &Config) -> Result<JsonValue, LambdaRuntimeError> {
     debug!("Received payload: {}. Context: {:?}", event.payload, event.context);
     let cloudwatch_logs = cloudwatch_logs().await;
     let cloud_trail_event = parse_event(event.payload, Some(event.context));
@@ -47,7 +52,7 @@ async fn func(event: LambdaEvent<JsonValue>) -> Result<JsonValue, LambdaRuntimeE
     }
     let cloud_trail_event = cloud_trail_event.expect("Should be Ok() based on above code.");
 
-    let result = process_event(cloud_trail_event, cloudwatch_logs).await;
+    let result = process_event(cloud_trail_event, cloudwatch_logs, config).await;
 
     match result {
         Ok(message) => Ok(message),
@@ -72,6 +77,7 @@ fn process_error(error: Error) -> Result<JsonValue, LambdaRuntimeError> {
 async fn process_event(
     event: CloudTrailEvent,
     cloudwatch_logs: impl DescribeLogGroups + ListTagsForResource + PutRetentionPolicy + TagResource,
+    config: &Config,
 ) -> Result<JsonValue, Error> {
     let log_group_name = event.detail.request_parameters.log_group_name;
 
@@ -94,10 +100,7 @@ async fn process_event(
 
     let log_group_arn = format!(
         "arn:{}:logs:{}:{}:log-group:{}",
-        aws_partition(),
-        event.detail.aws_region,
-        event.detail.user_identity.account_id,
-        log_group_name
+        config.aws_partition, event.detail.aws_region, event.detail.user_identity.account_id, log_group_name
     );
     let tags = cloudwatch_logs.list_tags_for_resource(&log_group_arn).await?;
     if let Some(retention) = tags.tags().and_then(|tags| tags.get("retention")) {
@@ -115,12 +118,12 @@ async fn process_event(
         }));
     }
 
-    cloudwatch_logs.put_retention_policy(&log_group_name, retention()).await?;
+    cloudwatch_logs.put_retention_policy(&log_group_name, config.retention_in_days).await?;
 
     metric_publisher::publish_metric(Metric::new(MetricName::Updated, 1));
 
-    if let Some(tags) = log_group_tags() {
-        cloudwatch_logs.tag_resource(&log_group_arn, tags).await?;
+    if let Some(tags) = &config.log_group_tags {
+        cloudwatch_logs.tag_resource(&log_group_arn, tags.clone()).await?;
     }
 
     info!("Retention set successfully for {}", log_group_name);
@@ -159,12 +162,12 @@ mod tests {
 
     use async_trait::async_trait;
     use aws_sdk_cloudwatchlogs::{
+        Error as CloudWatchLogsError,
         operation::{
             describe_log_groups::DescribeLogGroupsOutput, list_tags_for_resource::ListTagsForResourceOutput, put_retention_policy::PutRetentionPolicyOutput,
             tag_resource::TagResourceOutput,
         },
-        types::{error::DataAlreadyAcceptedException, LogGroup},
-        Error as CloudWatchLogsError,
+        types::{LogGroup, error::DataAlreadyAcceptedException},
     };
     use lambda_runtime::{Context, LambdaEvent};
     use mockall::{mock, predicate};
@@ -172,20 +175,22 @@ mod tests {
     use terraform_aws_default_log_retention::event::CloudTrailEvent;
     use terraform_aws_default_log_retention::{
         cloudwatch_logs_traits::{DescribeLogGroups, ListTagsForResource, PutRetentionPolicy, TagResource},
+        config::Config,
         error::{Error, Severity},
     };
 
     use crate::{func, parse_event, process_error, process_event};
 
-    /// Tests below expect `log_group_tags` to be set to an empty map.
-    /// Tests run single-threaded (`--test-threads=1`), so mutating the environment is safe.
-    fn set_empty_log_group_tags() {
-        std::env::set_var("log_group_tags", "{}");
+    /// Default config with `log_group_tags` set to an empty map, which the tests below expect.
+    fn test_config() -> Config {
+        Config {
+            log_group_tags: Some(HashMap::new()),
+            ..Config::default()
+        }
     }
 
     #[tokio::test]
     async fn test_process_event_success_no_tags() {
-        set_empty_log_group_tags();
         let event = CloudTrailEvent::new("123456789", "us-east-1", "MyLogGroupWasCreated");
         let log_group_arn = "arn:aws:logs:us-east-1:123456789:log-group:MyLogGroupWasCreated";
 
@@ -214,7 +219,9 @@ mod tests {
             .once()
             .returning(|_, _| Ok(TagResourceOutput::builder().build()));
 
-        let result = process_event(event, mock_cloud_watch_logs_client).await.expect("Should not fail");
+        let result = process_event(event, mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect("Should not fail");
 
         insta::assert_debug_snapshot!(result);
     }
@@ -222,8 +229,10 @@ mod tests {
     #[tokio::test]
     // Testing for govcloud or China
     async fn test_process_event_success_no_tags_different_aws_partition() {
-        set_empty_log_group_tags();
-        std::env::set_var("aws_partition", "aws-cn");
+        let config = Config {
+            aws_partition: "aws-cn".to_string(),
+            ..test_config()
+        };
         let event = CloudTrailEvent::new("123456789", "us-east-1", "MyLogGroupWasCreated");
         let log_group_arn = "arn:aws-cn:logs:us-east-1:123456789:log-group:MyLogGroupWasCreated";
 
@@ -252,9 +261,8 @@ mod tests {
             .once()
             .returning(|_, _| Ok(TagResourceOutput::builder().build()));
 
-        let result = process_event(event, mock_cloud_watch_logs_client).await.expect("Should not fail");
+        let result = process_event(event, mock_cloud_watch_logs_client, &config).await.expect("Should not fail");
 
-        std::env::remove_var("aws_partition");
         insta::assert_debug_snapshot!(result);
     }
 
@@ -285,14 +293,15 @@ mod tests {
                 ))
             });
 
-        let error = process_event(event, mock_cloud_watch_logs_client).await.expect_err("Should fail");
+        let error = process_event(event, mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect_err("Should fail");
 
         insta::assert_debug_snapshot!(error);
     }
 
     #[tokio::test]
     async fn test_process_event_fails_when_tag_log_group_fails() {
-        set_empty_log_group_tags();
         let event = CloudTrailEvent::new("123456789", "us-east-1", "MyLogGroupWasCreated");
 
         let log_group_arn = "arn:aws:logs:us-east-1:123456789:log-group:MyLogGroupWasCreated";
@@ -327,7 +336,9 @@ mod tests {
                 ))
             });
 
-        let error = process_event(event, mock_cloud_watch_logs_client).await.expect_err("Should fail");
+        let error = process_event(event, mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect_err("Should fail");
 
         insta::assert_debug_snapshot!(error);
     }
@@ -343,7 +354,9 @@ mod tests {
             .once()
             .returning(|_, _| mock_describe_log_groups_response("MyLogGroupWasCreated", 30));
 
-        let result = process_event(event, mock_cloud_watch_logs_client).await.expect("Should not fail");
+        let result = process_event(event, mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect("Should not fail");
 
         insta::assert_debug_snapshot!(result);
     }
@@ -365,7 +378,9 @@ mod tests {
             .once()
             .returning(|_| mock_list_tags_for_resource_response(Some("Do not override please")));
 
-        let result = process_event(event, mock_cloud_watch_logs_client).await.expect("Should not fail");
+        let result = process_event(event, mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect("Should not fail");
 
         insta::assert_debug_snapshot!(result);
     }
@@ -412,7 +427,7 @@ mod tests {
     async fn test_process_event_bad_input() {
         let input = json!({"invalid": "input"});
         let event = LambdaEvent::new(input, Context::default());
-        let result = func(event).await.expect("Should be OK with error message (warning).");
+        let result = func(event, &test_config()).await.expect("Should be OK with error message (warning).");
 
         insta::assert_debug_snapshot!(result);
     }
@@ -460,14 +475,12 @@ mod tests {
         }
     }
 
-    #[allow(clippy::result_large_err)] // This is a test, don't care about large err type
     fn mock_describe_log_groups_response(log_group_name: &str, retention: i32) -> Result<DescribeLogGroupsOutput, CloudWatchLogsError> {
         let log_group = LogGroup::builder().log_group_name(log_group_name).retention_in_days(retention).build();
         let response = DescribeLogGroupsOutput::builder().log_groups(log_group).build();
         Ok(response)
     }
 
-    #[allow(clippy::result_large_err)] // This is a test, don't care about large err type
     fn mock_list_tags_for_resource_response(retention_tag_value: Option<&str>) -> Result<ListTagsForResourceOutput, CloudWatchLogsError> {
         if let Some(retention_tag_value) = retention_tag_value {
             let mut tags: HashMap<String, String> = HashMap::new();

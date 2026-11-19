@@ -1,12 +1,16 @@
+// Mocks return `aws_sdk_cloudwatchlogs::Error` (160+ bytes) from closures; only relevant in test builds.
+#![cfg_attr(test, allow(clippy::result_large_err))]
+
 use aws_sdk_cloudwatchlogs::types::LogGroup;
 use lambda_runtime::{Error as LambdaRuntimeError, LambdaEvent};
 use log::{debug, error, info, trace};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 use terraform_aws_default_log_retention::global::initialize_metrics;
 use terraform_aws_default_log_retention::{
     cloudwatch_logs_traits::{DescribeLogGroups, ListTagsForResource, PutRetentionPolicy, TagResource},
+    config::Config,
     error::{Error, Severity},
-    global::{cloudwatch_logs, initialize_logger, log_group_tags, retention},
+    global::{cloudwatch_logs, initialize_logger},
     metric_publisher::{self, Metric, MetricName},
 };
 
@@ -23,10 +27,11 @@ enum UpdateResult {
 async fn main() -> Result<(), LambdaRuntimeError> {
     initialize_logger();
 
-    let metrics = initialize_metrics();
+    let config = Config::from_env();
+    let metrics = initialize_metrics(&config);
 
     trace!("Getting runtime result...");
-    let result = metrics_cloudwatch_embedded::lambda::handler::run(metrics, func).await;
+    let result = metrics_cloudwatch_embedded::lambda::handler::run(metrics, |event| func(event, &config)).await;
 
     match result {
         Ok(message) => {
@@ -42,10 +47,10 @@ async fn main() -> Result<(), LambdaRuntimeError> {
 
 // Ignore for code coverage
 #[cfg(not(tarpaulin_include))]
-async fn func(event: LambdaEvent<JsonValue>) -> Result<JsonValue, LambdaRuntimeError> {
+async fn func(event: LambdaEvent<JsonValue>, config: &Config) -> Result<JsonValue, LambdaRuntimeError> {
     debug!("Recevied payload: {}. Context: {:?}", event.payload, event.context);
     let client = cloudwatch_logs().await;
-    let result = process_all_log_groups(client).await;
+    let result = process_all_log_groups(client, config).await;
 
     match result {
         Ok(message) => Ok(message),
@@ -58,6 +63,7 @@ async fn func(event: LambdaEvent<JsonValue>) -> Result<JsonValue, LambdaRuntimeE
 
 async fn process_all_log_groups(
     cloudwatch_logs_client: impl DescribeLogGroups + ListTagsForResource + PutRetentionPolicy + TagResource,
+    config: &Config,
 ) -> Result<JsonValue, Error> {
     let mut errors = vec![];
     let mut total_groups = 0;
@@ -71,7 +77,7 @@ async fn process_all_log_groups(
 
         for log_group in result.log_groups() {
             total_groups += 1;
-            match process_log_group(log_group, &cloudwatch_logs_client).await {
+            match process_log_group(log_group, &cloudwatch_logs_client, config).await {
                 Ok(result) => match result {
                     UpdateResult::AlreadyHasRetention => already_has_retention += 1,
                     UpdateResult::AlreadyTaggedWithRetention => already_tagged_with_retention += 1,
@@ -104,9 +110,9 @@ async fn process_all_log_groups(
             json!({"message": "Success", "totalGroups": total_groups, "updated": updated, "alreadyHasRetention": already_has_retention, "alreadyTaggedWithRetention": already_tagged_with_retention}),
         ),
         false => {
-            error!("Failed to update some log group retentions: {:?}", &errors);
+            error!("Failed to update some log group retentions: {:?}", errors);
             Err(Error {
-                message: format!("Failed to update some log group retentions: {:?}", &errors),
+                message: format!("Failed to update some log group retentions: {:?}", errors),
                 severity: Severity::Error,
             })
         }
@@ -116,6 +122,7 @@ async fn process_all_log_groups(
 async fn process_log_group(
     log_group: &LogGroup,
     client: &(impl PutRetentionPolicy + ListTagsForResource + TagResource),
+    config: &Config,
 ) -> Result<UpdateResult, LambdaRuntimeError> {
     let log_group_arn = log_group.arn().expect("Log group ARN unexpectedly empty.").replace(":*", ""); // Some ARNs (all ARNs?) have :* on the end, but list-tags-for-resource cannot accept that part
     let log_group_name = log_group.log_group_name().expect("Log group name unexpectedly empty.");
@@ -140,12 +147,12 @@ async fn process_log_group(
         return Ok(UpdateResult::AlreadyTaggedWithRetention);
     }
 
-    let new_retention = retention();
+    let new_retention = config.retention_in_days;
     client.put_retention_policy(log_group_name, new_retention).await?;
     info!("Set retention of {} days on {}.", new_retention, log_group_name);
 
-    if let Some(tags) = log_group_tags() {
-        client.tag_resource(&log_group_arn, tags).await?;
+    if let Some(tags) = &config.log_group_tags {
+        client.tag_resource(&log_group_arn, tags.clone()).await?;
         info!("Tagged {}.", log_group_arn);
     }
 
@@ -161,28 +168,29 @@ mod tests {
 
     use async_trait::async_trait;
     use aws_sdk_cloudwatchlogs::{
+        Error as CloudWatchLogsError,
         operation::{
             describe_log_groups::DescribeLogGroupsOutput, list_tags_for_resource::ListTagsForResourceOutput, put_retention_policy::PutRetentionPolicyOutput,
             tag_resource::TagResourceOutput,
         },
         types::{
-            error::{DataAlreadyAcceptedException, InvalidOperationException, ResourceAlreadyExistsException},
             LogGroup,
+            error::{DataAlreadyAcceptedException, InvalidOperationException, ResourceAlreadyExistsException},
         },
-        Error as CloudWatchLogsError,
     };
 
     use terraform_aws_default_log_retention::cloudwatch_logs_traits::{PutRetentionPolicy, TagResource};
 
-    /// Tests below expect `log_group_tags` to be set to an empty map.
-    /// Tests run single-threaded (`--test-threads=1`), so mutating the environment is safe.
-    fn set_empty_log_group_tags() {
-        std::env::set_var("log_group_tags", "{}");
+    /// Default config with `log_group_tags` set to an empty map, which the tests below expect.
+    fn test_config() -> Config {
+        Config {
+            log_group_tags: Some(HashMap::new()),
+            ..Config::default()
+        }
     }
 
     #[tokio::test]
     async fn test_process_all_log_group_success() {
-        set_empty_log_group_tags();
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         mock_cloud_watch_logs_client
             .expect_describe_log_groups()
@@ -255,7 +263,9 @@ mod tests {
             .once()
             .returning(|_, _| Ok(TagResourceOutput::builder().build()));
 
-        let result = process_all_log_groups(mock_cloud_watch_logs_client).await.expect("Should not fail");
+        let result = process_all_log_groups(mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect("Should not fail");
 
         insta::assert_snapshot!(result);
     }
@@ -279,14 +289,15 @@ mod tests {
             .expect_list_tags_for_resource()
             .returning(|_| Ok(ListTagsForResourceOutput::builder().tags("retention", "DoNotTouch").build()));
 
-        let result = process_all_log_groups(mock_cloud_watch_logs_client).await.expect("Should not fail");
+        let result = process_all_log_groups(mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect("Should not fail");
 
         insta::assert_snapshot!(result);
     }
 
     #[tokio::test]
     async fn test_process_all_log_group_partial_success() {
-        set_empty_log_group_tags();
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         mock_cloud_watch_logs_client
             .expect_describe_log_groups()
@@ -376,14 +387,15 @@ mod tests {
             .once()
             .returning(|_, _| Err(CloudWatchLogsError::InvalidOperationException(InvalidOperationException::builder().build())));
 
-        let result = process_all_log_groups(mock_cloud_watch_logs_client).await.expect_err("Should fail");
+        let result = process_all_log_groups(mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect_err("Should fail");
 
         insta::assert_snapshot!(result);
     }
 
     #[tokio::test]
     async fn test_process_log_group_success() {
-        set_empty_log_group_tags();
         let mut mock_cloud_watch_logs_client = MockCloudWatchLogs::new();
         let log_group_arn = "arn:aws:logs:123:us-west-2:log-group/MyLogGroupWasCreated";
 
@@ -411,7 +423,9 @@ mod tests {
             .retention_in_days(0)
             .build();
 
-        let result = process_log_group(&log_group, &mock_cloud_watch_logs_client).await.expect("Should not fail");
+        let result = process_log_group(&log_group, &mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect("Should not fail");
 
         assert_eq!(UpdateResult::Updated, result);
     }
@@ -426,7 +440,9 @@ mod tests {
             .retention_in_days(30)
             .build();
 
-        let result = process_log_group(&log_group, &mock_cloud_watch_logs_client).await.expect("Should not fail");
+        let result = process_log_group(&log_group, &mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect("Should not fail");
 
         assert_eq!(UpdateResult::AlreadyHasRetention, result);
     }
@@ -447,7 +463,9 @@ mod tests {
             .retention_in_days(0)
             .build();
 
-        let result = process_log_group(&log_group, &mock_cloud_watch_logs_client).await.expect("Should not fail");
+        let result = process_log_group(&log_group, &mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect("Should not fail");
 
         assert_eq!(UpdateResult::AlreadyTaggedWithRetention, result);
     }
@@ -472,7 +490,9 @@ mod tests {
             .retention_in_days(0)
             .build();
 
-        let result = process_log_group(&log_group, &mock_cloud_watch_logs_client).await.expect_err("Should fail");
+        let result = process_log_group(&log_group, &mock_cloud_watch_logs_client, &test_config())
+            .await
+            .expect_err("Should fail");
 
         insta::assert_debug_snapshot!(result);
     }

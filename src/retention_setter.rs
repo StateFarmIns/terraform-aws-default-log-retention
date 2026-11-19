@@ -25,7 +25,7 @@ pub async fn get_existing_retention(log_group_name: &str, client: &impl Describe
 
 #[cfg(test)]
 mod tests {
-    use aws_sdk_cloudwatchlogs::{operation::describe_log_groups::DescribeLogGroupsOutput, types::LogGroup, Error as CloudWatchLogsError};
+    use aws_sdk_cloudwatchlogs::{Error as CloudWatchLogsError, operation::describe_log_groups::DescribeLogGroupsOutput, types::LogGroup};
     use mockall::predicate;
 
     use crate::{cloudwatch_logs_traits::MockDescribeLogGroups, error::Severity};
@@ -90,7 +90,6 @@ mod tests {
         assert!(err.message.contains(group));
     }
 
-    #[allow(clippy::result_large_err)] // This is a test, don't care about large err type
     fn mock_describe_log_groups_response(log_group_name: &str, retention: i32) -> Result<DescribeLogGroupsOutput, CloudWatchLogsError> {
         let log_group = LogGroup::builder().log_group_name(log_group_name).retention_in_days(retention).build();
         let response = DescribeLogGroupsOutput::builder().log_groups(log_group).build();
