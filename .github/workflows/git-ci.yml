@@ -70,7 +70,34 @@ jobs:
           path: reports/
           retention-days: 14
 
-  audit: 
+  terraform-docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to push regenerated docs back to the PR branch
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+      # Same-repo PRs: regenerate the README's Terraform docs section and push it back to the branch.
+      - name: Generate Terraform docs
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        uses: terraform-docs/gh-actions@6de6da0cefcc6b4b7a5cbea4d79d97060733093c # v1.4.1
+        with:
+          config-file: .terraform-docs.yml
+          output-method: ""
+          git-push: true
+          git-commit-message: "docs: ✏️ Regenerate Terraform docs"
+      # Fork PRs: we can't push to the fork, so fail if the docs are stale and let the contributor run `terraform-docs .`.
+      - name: Check Terraform docs are up to date
+        if: github.event.pull_request.head.repo.full_name != github.repository
+        uses: terraform-docs/gh-actions@6de6da0cefcc6b4b7a5cbea4d79d97060733093c # v1.4.1
+        with:
+          config-file: .terraform-docs.yml
+          output-method: ""
+          fail-on-diff: true
+
+  audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
