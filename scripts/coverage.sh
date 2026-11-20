@@ -1,5 +1,13 @@
 #!/bin/bash
+# Runs code coverage natively on Linux or macOS (no Docker needed).
+# Settings live in .tarpaulin.toml. Reports are written to reports/.
+set -euo pipefail
 
-# TODO: This script doesn't work inside State Farm; check it out on a non-corporate laptop.
+if ! cargo tarpaulin --version >/dev/null 2>&1; then
+  echo "cargo-tarpaulin not found; installing..."
+  cargo install cargo-tarpaulin
+fi
 
-docker run --security-opt seccomp=unconfined -v "$(pwd):/volume" xd009642/tarpaulin sh -c "cargo tarpaulin --skip-clean"
+cargo tarpaulin --skip-clean "$@"
+
+echo "HTML report: reports/tarpaulin-report.html"

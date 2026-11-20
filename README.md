@@ -196,6 +196,9 @@ Installations (other than Rust/cargo):
 `./scripts/build-release.sh`
 
 ## Running Code Coverage
-TODO: Fix Tarpaulin
+Coverage uses [Tarpaulin](https://github.com/xd009642/tarpaulin) with the LLVM engine, so it runs natively on Linux and macOS (no Docker or disabled seccomp needed).
 
-[Tarpaulin](https://github.com/xd009642/tarpaulin) is a tool for coverage but it only runs on Linux. Furthermore it only runs when [certain security features are disabled](https://github.com/xd009642/tarpaulin/issues/146). It is not currently automated, so coverage will only be updated manually by hand. Feel free to check in the `reports/*` folder reports that Tarpaulin creates so that we at least have some sort of record of coverage, even if it is manually generated on local machines.
+* `cargo install cargo-tarpaulin`
+* `./scripts/coverage.sh`
+
+Settings live in `.tarpaulin.toml`. HTML and Cobertura XML reports are written to `reports/` (git-ignored). The `coverage` job runs on every PR and push to `main`, fails if coverage drops below 90%, and uploads the reports as the `coverage-report` artifact.

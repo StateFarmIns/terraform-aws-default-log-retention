@@ -41,6 +41,24 @@ jobs:
       - name: Run cargo test
         run: cargo test
 
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin
+      - name: Run cargo tarpaulin
+        run: cargo tarpaulin # Settings (engine, excludes, fail-under) in .tarpaulin.toml
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: reports/
+          retention-days: 14
+
   audit: 
     runs-on: ubuntu-latest
     steps:

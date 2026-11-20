@@ -19,7 +19,7 @@ bootstrap.zip
 # Added by cargo
 
 /target
-reports/tarpaulin-report.html
+reports/
 
 # DrawIO Temp Files
 .$*.bkp

@@ -1,5 +1,9 @@
 [coverage]
+# LLVM source-based coverage works on Linux and macOS and doesn't need ptrace,
+# so no Docker or disabled seccomp is required.
+engine = "Llvm"
 exclude-files = ["src/cloudwatch_logs_traits.rs", "src/cloudwatch_metrics_traits.rs", "src/error.rs"]
+fail-under = 90
 
 [report]
 out = ["Html", "Xml", "Stdout"]
