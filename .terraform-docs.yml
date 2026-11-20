@@ -1,0 +1,15 @@
+# Configuration for https://terraform-docs.io
+# Regenerate locally with: terraform-docs .
+formatter: markdown table
+
+output:
+  file: README.md
+  mode: inject
+
+# Ignore any local .terraform.lock.hcl so output matches CI regardless of what was last `terraform init`ed.
+settings:
+  lockfile: false
+
+sort:
+  enabled: true
+  by: name
