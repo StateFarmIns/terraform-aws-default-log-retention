@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use aws_config::{BehaviorVersion, SdkConfig};
 use aws_sdk_cloudwatchlogs::Client as CloudWatchLogsClient;
@@ -8,7 +8,7 @@ use log::trace;
 use metrics_cloudwatch_embedded::Collector;
 use tracing::info_span;
 
-use crate::cloudwatch_logs_traits::CloudWatchLogs;
+use crate::{cloudwatch_logs_traits::CloudWatchLogs, config::Config};
 
 #[cached]
 pub async fn cloudwatch_logs() -> CloudWatchLogs {
@@ -26,43 +26,21 @@ async fn sdk_config() -> SdkConfig {
     aws_config::defaults(BehaviorVersion::v2026_11_17()).retry_config(retry_config).load().await
 }
 
-#[cfg_attr(not(test), cached)] // Disables caching for tests https://github.com/jaemk/cached/issues/130
-pub fn retention() -> i32 {
-    std::env::var("log_retention_in_days")
-        .unwrap_or_else(|_| "30".to_string())
-        .parse()
-        .unwrap_or(30)
-}
-
-#[cfg_attr(not(test), cached)] // Disables caching for tests https://github.com/jaemk/cached/issues/130
-pub fn log_group_tags() -> Option<HashMap<String, String>> {
-    let log_group_tags = std::env::var("log_group_tags").ok()?;
-    let log_group_tags = serde_json::from_str(&log_group_tags).ok()?;
-    Some(log_group_tags)
-}
-
-#[cached]
-pub fn metric_namespace() -> String {
-    std::env::var("metric_namespace").unwrap_or_else(|_| "LogRotation".to_string())
-}
-
-pub fn aws_partition() -> String {
-    std::env::var("aws_partition").unwrap_or_else(|_| "aws".to_string())
-}
-
 pub fn initialize_logger() {
     trace!("Initializing logger...");
     env_logger::builder().format_timestamp(None).init();
 }
 
-pub fn initialize_metrics() -> &'static Collector {
+pub fn initialize_metrics(config: &Config) -> &'static Collector {
     trace!("Initializing metrics emitter...");
 
-    let lambda_function_name =
-        std::env::var("AWS_LAMBDA_FUNCTION_NAME").expect("Could not determine Lambda function name. Is this code being run in AWS Lambda?");
+    let lambda_function_name = config
+        .lambda_function_name
+        .clone()
+        .expect("Could not determine Lambda function name. Is this code being run in AWS Lambda?");
 
     metrics_cloudwatch_embedded::Builder::new()
-        .cloudwatch_namespace(metric_namespace())
+        .cloudwatch_namespace(config.metric_namespace.clone())
         .with_dimension("function", lambda_function_name)
         .with_lambda_request_id("RequestId")
         .lambda_cold_start_metric("ColdStart")
@@ -73,79 +51,29 @@ pub fn initialize_metrics() -> &'static Collector {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use crate::config::Config;
 
-    use crate::global::retention;
-
-    use super::{cloudwatch_logs, initialize_logger, initialize_metrics, log_group_tags};
+    use super::{cloudwatch_logs, initialize_logger, initialize_metrics};
 
     #[test]
     fn test_initialize_metrics() {
-        std::env::set_var("AWS_LAMBDA_FUNCTION_NAME", "test-function-name");
-        initialize_metrics();
+        let config = Config {
+            lambda_function_name: Some("test-function-name".to_string()),
+            ..Config::default()
+        };
+        initialize_metrics(&config);
     }
 
     #[test]
     #[should_panic]
     fn test_initialize_metrics_outside_lambda() {
-        std::env::remove_var("AWS_LAMBDA_FUNCTION_NAME");
-        initialize_metrics();
+        initialize_metrics(&Config::default());
     }
 
     #[tokio::test]
     async fn test_cw_logs_client() {
-        std::env::set_var("AWS_ACCESS_KEY_ID", "AKIAASDASDQWEF");
-        std::env::set_var("AWS_SECRET_ACCESS_KEY", "ASIAAFQWEFWEIFJ");
-
+        // Credentials are resolved lazily on first request, so none are needed just to build the client.
         cloudwatch_logs().await;
-    }
-
-    #[test]
-    fn test_retention() {
-        std::env::set_var("log_retention_in_days", "1");
-        assert_eq!(1, retention());
-    }
-
-    #[test]
-    fn test_retention_invalid() {
-        std::env::set_var("log_retention_in_days", "asdasdasd");
-        assert_eq!(30, retention());
-    }
-
-    #[test]
-    fn test_retention_not_set() {
-        std::env::remove_var("log_retention_in_days");
-        assert_eq!(30, retention());
-    }
-
-    #[test]
-    fn test_log_group_tags_none() {
-        std::env::remove_var("log_group_tags");
-        assert_eq!(log_group_tags(), None);
-    }
-
-    #[test]
-    fn test_log_group_tags_valid() {
-        let tags_json = "{\"a\": \"b\", \"c\": \"d\"}";
-        std::env::set_var("log_group_tags", tags_json);
-
-        let mut expected = HashMap::new();
-        expected.insert("a".to_string(), "b".to_string());
-        expected.insert("c".to_string(), "d".to_string());
-
-        assert_eq!(log_group_tags(), Some(expected));
-    }
-
-    #[test]
-    fn test_log_group_tags_invalid_none() {
-        std::env::set_var("log_group_tags", "true");
-        assert_eq!(log_group_tags(), None);
-    }
-
-    #[test]
-    fn test_log_group_tags_empty() {
-        std::env::set_var("log_group_tags", "{}");
-        assert_eq!(log_group_tags(), Some(HashMap::new()));
     }
 
     #[test]
